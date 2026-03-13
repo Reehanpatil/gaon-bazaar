@@ -1,11 +1,12 @@
 <!doctype html>
-<html lang="hi">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>गाँव बाज़ार — Village Shop Finder</title>
+    <title>VillageMarket — Find Local Shops Near You</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
-      href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&family=Baloo+2:wght@400;600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,700;1,9..144,400&display=swap"
       rel="stylesheet"
     />
     <link
@@ -13,8 +14,1882 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
     />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-    <!-- Firebase -->
+    <style>
+      /* ═══════════════════════════════════════════
+   DESIGN SYSTEM
+═══════════════════════════════════════════ */
+      :root {
+        --brand: #0d6e4e;
+        --brand-mid: #148a62;
+        --brand-light: #1ba876;
+        --brand-glow: rgba(13, 110, 78, 0.18);
+        --accent: #ff5e2c;
+        --accent-light: #fff0eb;
+        --gold: #f4a623;
+        --surface: #ffffff;
+        --surface-2: #f6f9f7;
+        --surface-3: #edf3ef;
+        --border: #e0ebe4;
+        --text-primary: #0e1f18;
+        --text-secondary: #4a6358;
+        --text-muted: #8aa396;
+        --shadow-sm:
+          0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+        --shadow-md:
+          0 4px 16px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
+        --shadow-lg:
+          0 12px 40px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06);
+        --shadow-xl: 0 24px 60px rgba(0, 0, 0, 0.16);
+        --r-sm: 8px;
+        --r-md: 14px;
+        --r-lg: 20px;
+        --r-xl: 28px;
+      }
+
+      *,
+      *::before,
+      *::after {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+        background: var(--surface-2);
+        color: var(--text-primary);
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
+
+      /* ═══════════════════════════════════════════
+   PAGES SYSTEM
+═══════════════════════════════════════════ */
+      .page {
+        position: fixed;
+        inset: 0;
+        opacity: 0;
+        pointer-events: none;
+        transition:
+          opacity 0.28s ease,
+          transform 0.28s ease;
+        overflow-y: auto;
+        background: var(--surface-2);
+      }
+      .page.active {
+        opacity: 1;
+        pointer-events: all;
+        position: relative;
+      }
+      .page.slide-in {
+        transform: translateX(32px);
+      }
+      .page.slide-out {
+        transform: translateX(-32px);
+      }
+
+      /* ═══════════════════════════════════════════
+   PAGE 1 — HOME / MAP
+═══════════════════════════════════════════ */
+      #page-home {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      /* TOPBAR */
+      .topbar {
+        background: var(--brand);
+        padding: 0 20px;
+        height: 62px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex-shrink: 0;
+        position: relative;
+        z-index: 100;
+      }
+      .topbar::after {
+        content: "";
+        position: absolute;
+        bottom: -1px;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: rgba(255, 255, 255, 0.12);
+      }
+
+      .logo-wrap {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        text-decoration: none;
+        flex-shrink: 0;
+      }
+      .logo-mark {
+        width: 36px;
+        height: 36px;
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(8px);
+      }
+      .logo-name {
+        font-family: "Fraunces", serif;
+        font-size: 20px;
+        font-weight: 700;
+        color: #fff;
+        letter-spacing: -0.3px;
+        line-height: 1;
+      }
+      .logo-tagline {
+        font-size: 10px;
+        color: rgba(255, 255, 255, 0.6);
+        font-weight: 500;
+        letter-spacing: 0.2px;
+      }
+
+      .search-bar-wrap {
+        flex: 1;
+        max-width: 480px;
+        position: relative;
+      }
+      .search-bar {
+        width: 100%;
+        background: rgba(255, 255, 255, 0.12);
+        border: 1.5px solid rgba(255, 255, 255, 0.2);
+        border-radius: 30px;
+        padding: 9px 44px 9px 40px;
+        color: #fff;
+        font-size: 13.5px;
+        font-family: inherit;
+        outline: none;
+        transition: all 0.2s;
+        backdrop-filter: blur(8px);
+      }
+      .search-bar::placeholder {
+        color: rgba(255, 255, 255, 0.5);
+      }
+      .search-bar:focus {
+        background: rgba(255, 255, 255, 0.18);
+        border-color: rgba(255, 255, 255, 0.45);
+      }
+      .search-icon {
+        position: absolute;
+        left: 13px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 15px;
+        pointer-events: none;
+      }
+      .search-clear {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        color: #fff;
+        font-size: 10px;
+        cursor: pointer;
+        display: none;
+        align-items: center;
+        justify-content: center;
+      }
+      .search-bar:not(:placeholder-shown) ~ .search-clear {
+        display: flex;
+      }
+
+      /* Search dropdown */
+      .search-dropdown {
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 0;
+        right: 0;
+        background: var(--surface);
+        border-radius: var(--r-md);
+        box-shadow: var(--shadow-xl);
+        border: 1px solid var(--border);
+        overflow: hidden;
+        display: none;
+        z-index: 999;
+        max-height: 340px;
+        overflow-y: auto;
+      }
+      .search-dropdown.open {
+        display: block;
+        animation: dropIn 0.18s ease;
+      }
+      @keyframes dropIn {
+        from {
+          opacity: 0;
+          transform: translateY(-6px);
+        }
+      }
+      .search-result-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 11px 16px;
+        cursor: pointer;
+        transition: background 0.12s;
+        border-bottom: 1px solid var(--border);
+      }
+      .search-result-item:last-child {
+        border-bottom: none;
+      }
+      .search-result-item:hover {
+        background: var(--surface-2);
+      }
+      .sri-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 17px;
+        flex-shrink: 0;
+      }
+      .sri-info {
+        flex: 1;
+        min-width: 0;
+      }
+      .sri-name {
+        font-size: 13.5px;
+        font-weight: 700;
+        color: var(--text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .sri-meta {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-top: 1px;
+      }
+      .sri-arrow {
+        color: var(--text-muted);
+        font-size: 13px;
+      }
+
+      .topbar-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .topbar-btn {
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 22px;
+        color: #fff;
+        padding: 7px 14px;
+        font-size: 12.5px;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s;
+        white-space: nowrap;
+      }
+      .topbar-btn:hover {
+        background: rgba(255, 255, 255, 0.22);
+      }
+      .topbar-btn.accent {
+        background: var(--accent);
+        border-color: var(--accent);
+      }
+      .topbar-btn.accent:hover {
+        background: #e8501f;
+      }
+
+      /* HOME BODY */
+      .home-body {
+        flex: 1;
+        display: flex;
+        overflow: hidden;
+        position: relative;
+      }
+
+      /* SIDEBAR */
+      .sidebar {
+        width: 360px;
+        min-width: 320px;
+        display: flex;
+        flex-direction: column;
+        background: var(--surface);
+        border-right: 1px solid var(--border);
+        overflow: hidden;
+        z-index: 10;
+      }
+
+      .sidebar-header {
+        padding: 14px 16px 10px;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface);
+        flex-shrink: 0;
+      }
+
+      .filter-pills {
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+        padding-bottom: 2px;
+        scrollbar-width: none;
+      }
+      .filter-pills::-webkit-scrollbar {
+        display: none;
+      }
+
+      .pill {
+        padding: 6px 14px;
+        border-radius: 20px;
+        border: 1.5px solid var(--border);
+        background: var(--surface);
+        font-size: 12px;
+        font-weight: 600;
+        font-family: inherit;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.15s;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      .pill:hover {
+        border-color: var(--brand-light);
+        color: var(--brand);
+      }
+      .pill.active {
+        background: var(--brand);
+        border-color: var(--brand);
+        color: #fff;
+      }
+
+      .sidebar-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 16px 6px;
+        flex-shrink: 0;
+      }
+      .results-label {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+      }
+      .nearby-toggle {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--brand);
+        cursor: pointer;
+        background: none;
+        border: none;
+        font-family: inherit;
+        padding: 4px 8px;
+        border-radius: 8px;
+        transition: background 0.15s;
+      }
+      .nearby-toggle:hover {
+        background: var(--surface-3);
+      }
+      .nearby-toggle .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #22c55e;
+        box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25);
+        animation: pulse-dot 2s infinite;
+      }
+      @keyframes pulse-dot {
+        0%,
+        100% {
+          box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25);
+        }
+        50% {
+          box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.08);
+        }
+      }
+
+      .shops-scroll {
+        flex: 1;
+        overflow-y: auto;
+        padding: 10px 12px;
+      }
+      .shops-scroll::-webkit-scrollbar {
+        width: 3px;
+      }
+      .shops-scroll::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 3px;
+      }
+
+      /* SHOP CARD */
+      .shop-card {
+        background: var(--surface);
+        border-radius: var(--r-md);
+        border: 1.5px solid var(--border);
+        margin-bottom: 10px;
+        cursor: pointer;
+        overflow: hidden;
+        transition: all 0.18s;
+        box-shadow: var(--shadow-sm);
+      }
+      .shop-card:hover {
+        border-color: var(--brand-light);
+        box-shadow: var(--shadow-md);
+        transform: translateY(-1px);
+      }
+      .shop-card.highlighted {
+        border-color: var(--brand);
+        box-shadow:
+          0 0 0 3px var(--brand-glow),
+          var(--shadow-md);
+      }
+      .shop-card.nearby-card::before {
+        content: "📍 Near You";
+        display: block;
+        background: linear-gradient(
+          90deg,
+          var(--brand) 0%,
+          var(--brand-light) 100%
+        );
+        color: #fff;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        padding: 3px 12px;
+        text-align: center;
+      }
+
+      .card-img {
+        height: 108px;
+        position: relative;
+        overflow: hidden;
+      }
+      .card-img img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .card-img .card-emoji-bg {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 44px;
+      }
+      .card-status {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        padding: 3px 9px;
+        border-radius: 12px;
+        font-size: 10px;
+        font-weight: 700;
+        backdrop-filter: blur(8px);
+      }
+      .card-status.open {
+        background: rgba(22, 163, 74, 0.88);
+        color: #fff;
+      }
+      .card-status.closed {
+        background: rgba(185, 28, 28, 0.82);
+        color: #fff;
+      }
+      .card-photo-count {
+        position: absolute;
+        bottom: 8px;
+        right: 8px;
+        background: rgba(0, 0, 0, 0.55);
+        color: #fff;
+        font-size: 10px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 10px;
+        backdrop-filter: blur(6px);
+      }
+      .card-distance {
+        position: absolute;
+        bottom: 8px;
+        left: 8px;
+        background: rgba(13, 110, 78, 0.88);
+        color: #fff;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 10px;
+        backdrop-filter: blur(6px);
+      }
+
+      .card-body {
+        padding: 11px 13px 8px;
+      }
+      .card-name {
+        font-size: 14.5px;
+        font-weight: 800;
+        color: var(--text-primary);
+        margin-bottom: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .card-type {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 7px;
+      }
+      .card-stats {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 11.5px;
+        color: var(--text-muted);
+        margin-bottom: 7px;
+      }
+      .card-stats .star {
+        color: #f59e0b;
+      }
+      .card-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+      .tag {
+        background: var(--surface-3);
+        color: var(--text-secondary);
+        font-size: 10.5px;
+        font-weight: 600;
+        padding: 2px 9px;
+        border-radius: 10px;
+      }
+
+      .card-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 13px;
+        border-top: 1px solid var(--border);
+      }
+      .card-phone {
+        font-size: 12px;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .like-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 16px;
+        color: var(--text-muted);
+        transition: transform 0.2s;
+        font-family: inherit;
+        padding: 2px 4px;
+        border-radius: 8px;
+      }
+      .like-btn:hover {
+        transform: scale(1.2);
+      }
+      .like-btn.liked {
+        color: #ef4444;
+      }
+      .like-count {
+        font-size: 11px;
+      }
+
+      /* MAP */
+      #map {
+        flex: 1;
+        z-index: 1;
+      }
+
+      /* ═══════════════════════════════════════════
+   PAGE 2 — SHOP DETAIL
+═══════════════════════════════════════════ */
+      #page-detail {
+        min-height: 100vh;
+        display: none;
+      }
+      #page-detail.active {
+        display: block;
+      }
+
+      .detail-topbar {
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        padding: 0 24px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        box-shadow: var(--shadow-sm);
+      }
+      .back-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--surface-3);
+        border: none;
+        border-radius: 22px;
+        padding: 7px 16px;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text-primary);
+        cursor: pointer;
+        font-family: inherit;
+        transition: all 0.15s;
+      }
+      .back-btn:hover {
+        background: var(--surface-2);
+      }
+      .detail-topbar-title {
+        font-size: 15px;
+        font-weight: 800;
+        color: var(--text-primary);
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .detail-layout {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 28px 24px;
+        display: grid;
+        grid-template-columns: 1fr 360px;
+        gap: 24px;
+      }
+
+      /* PHOTO HERO */
+      .photo-hero {
+        border-radius: var(--r-xl);
+        overflow: hidden;
+        background: var(--surface-3);
+        position: relative;
+        aspect-ratio: 16/8;
+      }
+      .photo-hero-main {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .photo-hero-emoji {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 90px;
+      }
+      .photo-strip {
+        position: absolute;
+        bottom: 14px;
+        left: 14px;
+        display: flex;
+        gap: 8px;
+      }
+      .photo-thumb {
+        width: 54px;
+        height: 40px;
+        border-radius: 8px;
+        overflow: hidden;
+        cursor: pointer;
+        border: 2px solid transparent;
+        transition: all 0.15s;
+        flex-shrink: 0;
+      }
+      .photo-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .photo-thumb.active {
+        border-color: #fff;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      }
+
+      .detail-status-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+        flex-wrap: wrap;
+      }
+      .status-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 11.5px;
+        font-weight: 700;
+      }
+      .status-badge.open {
+        background: #dcfce7;
+        color: #15803d;
+      }
+      .status-badge.closed {
+        background: #fee2e2;
+        color: #b91c1c;
+      }
+      .type-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 11.5px;
+        font-weight: 700;
+        background: var(--surface-3);
+        color: var(--text-secondary);
+      }
+
+      .detail-shop-name {
+        font-family: "Fraunces", serif;
+        font-size: 34px;
+        font-weight: 700;
+        color: var(--text-primary);
+        line-height: 1.2;
+        margin-bottom: 6px;
+        letter-spacing: -0.5px;
+      }
+      .detail-village {
+        font-size: 14px;
+        color: var(--text-muted);
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .rating-row {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 14px 18px;
+        background: var(--surface-3);
+        border-radius: var(--r-md);
+        margin-bottom: 20px;
+      }
+      .rating-big {
+        font-family: "Fraunces", serif;
+        font-size: 38px;
+        font-weight: 700;
+        color: var(--text-primary);
+        line-height: 1;
+      }
+      .rating-stars-col {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+      .stars-row {
+        display: flex;
+        gap: 2px;
+      }
+      .star-icon {
+        font-size: 16px;
+        color: #f59e0b;
+      }
+      .star-icon.empty {
+        color: #d1d5db;
+      }
+      .rating-sub {
+        font-size: 12px;
+        color: var(--text-muted);
+        font-weight: 600;
+      }
+      .rating-divider {
+        width: 1px;
+        height: 40px;
+        background: var(--border);
+      }
+      .rating-stat {
+        text-align: center;
+      }
+      .rating-stat .n {
+        font-size: 20px;
+        font-weight: 800;
+        color: var(--text-primary);
+      }
+      .rating-stat .l {
+        font-size: 11px;
+        color: var(--text-muted);
+        font-weight: 600;
+      }
+
+      /* DESCRIPTION */
+      .detail-desc {
+        font-size: 14.5px;
+        line-height: 1.75;
+        color: var(--text-secondary);
+        margin-bottom: 22px;
+      }
+
+      /* PRODUCTS */
+      .section-title {
+        font-size: 13px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+        color: var(--text-muted);
+        margin-bottom: 12px;
+      }
+      .products-wrap {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 24px;
+      }
+      .product-chip {
+        background: var(--surface);
+        border: 1.5px solid var(--border);
+        color: var(--text-secondary);
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 12.5px;
+        font-weight: 600;
+      }
+
+      /* REVIEWS */
+      .review-composer {
+        background: var(--surface-3);
+        border-radius: var(--r-md);
+        padding: 16px;
+        margin-bottom: 16px;
+        border: 1.5px solid var(--border);
+      }
+      .review-composer-title {
+        font-size: 13px;
+        font-weight: 800;
+        color: var(--text-primary);
+        margin-bottom: 10px;
+      }
+      .star-picker {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 10px;
+      }
+      .star-pick {
+        font-size: 26px;
+        cursor: pointer;
+        transition: transform 0.1s;
+        background: none;
+        border: none;
+        line-height: 1;
+        color: #f59e0b;
+      }
+      .star-pick:hover {
+        transform: scale(1.2);
+      }
+      .review-input {
+        width: 100%;
+        background: var(--surface);
+        border: 1.5px solid var(--border);
+        border-radius: var(--r-sm);
+        padding: 10px 13px;
+        font-size: 13.5px;
+        font-family: inherit;
+        color: var(--text-primary);
+        resize: none;
+        min-height: 72px;
+        outline: none;
+        transition: border-color 0.15s;
+        margin-bottom: 10px;
+      }
+      .review-input:focus {
+        border-color: var(--brand-light);
+      }
+      .review-submit {
+        background: var(--brand);
+        color: #fff;
+        border: none;
+        border-radius: var(--r-sm);
+        padding: 9px 20px;
+        font-size: 13px;
+        font-weight: 700;
+        font-family: inherit;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      .review-submit:hover {
+        background: var(--brand-mid);
+      }
+
+      .reviews-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 24px;
+      }
+      .review-item {
+        background: var(--surface);
+        border: 1.5px solid var(--border);
+        border-radius: var(--r-md);
+        padding: 14px 16px;
+      }
+      .review-top {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 8px;
+      }
+      .reviewer-av {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--brand);
+        color: #fff;
+        font-size: 14px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .reviewer-name {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+      .reviewer-stars {
+        font-size: 12px;
+        color: #f59e0b;
+      }
+      .review-date {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-left: auto;
+      }
+      .review-body {
+        font-size: 13.5px;
+        color: var(--text-secondary);
+        line-height: 1.65;
+      }
+
+      /* DETAIL SIDEBAR */
+      .detail-side {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .contact-card {
+        background: var(--surface);
+        border: 1.5px solid var(--border);
+        border-radius: var(--r-lg);
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+      }
+      .contact-card-head {
+        background: var(--brand);
+        padding: 16px 18px;
+        color: #fff;
+      }
+      .contact-card-shop {
+        font-size: 11px;
+        opacity: 0.75;
+        font-weight: 600;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+      }
+      .contact-card-owner {
+        font-family: "Fraunces", serif;
+        font-size: 22px;
+        font-weight: 700;
+        line-height: 1.2;
+      }
+      .contact-card-hours {
+        font-size: 12px;
+        opacity: 0.8;
+        margin-top: 4px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .contact-items {
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .contact-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
+        background: var(--surface-2);
+        border-radius: var(--r-sm);
+        text-decoration: none;
+        transition: background 0.12s;
+        cursor: pointer;
+      }
+      .contact-row:hover {
+        background: var(--surface-3);
+      }
+      .contact-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 17px;
+        flex-shrink: 0;
+      }
+      .contact-row .c-label {
+        font-size: 11px;
+        color: var(--text-muted);
+        font-weight: 600;
+      }
+      .contact-row .c-value {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+
+      .cta-btns {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 0 14px 14px;
+      }
+      .cta-btn {
+        width: 100%;
+        padding: 12px;
+        border-radius: var(--r-md);
+        border: none;
+        font-size: 13.5px;
+        font-weight: 700;
+        font-family: inherit;
+        cursor: pointer;
+        transition: all 0.15s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+      }
+      .cta-btn.primary {
+        background: var(--brand);
+        color: #fff;
+      }
+      .cta-btn.primary:hover {
+        background: var(--brand-mid);
+      }
+      .cta-btn.whatsapp {
+        background: #25d366;
+        color: #fff;
+      }
+      .cta-btn.whatsapp:hover {
+        background: #1cb955;
+      }
+      .cta-btn.outline {
+        background: var(--surface-3);
+        color: var(--text-primary);
+      }
+      .cta-btn.outline:hover {
+        background: var(--border);
+      }
+
+      /* Mini map in detail */
+      #detail-mini-map {
+        height: 180px;
+        border-radius: var(--r-md);
+        overflow: hidden;
+        border: 1.5px solid var(--border);
+      }
+
+      /* Hours card */
+      .hours-card {
+        background: var(--surface);
+        border: 1.5px solid var(--border);
+        border-radius: var(--r-lg);
+        padding: 16px 18px;
+        box-shadow: var(--shadow-sm);
+      }
+      .hours-title {
+        font-size: 12px;
+        font-weight: 800;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        margin-bottom: 12px;
+      }
+      .hours-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 7px 0;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+      }
+      .hours-row:last-child {
+        border-bottom: none;
+      }
+      .hours-day {
+        color: var(--text-secondary);
+        font-weight: 600;
+      }
+      .hours-time {
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+
+      /* ═══════════════════════════════════════════
+   ADD SHOP MODAL
+═══════════════════════════════════════════ */
+      .overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(10, 20, 15, 0.6);
+        z-index: 1000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        backdrop-filter: blur(6px);
+      }
+      .overlay.open {
+        display: flex;
+      }
+      .modal {
+        background: var(--surface);
+        border-radius: var(--r-xl);
+        width: 100%;
+        max-width: 520px;
+        max-height: 88vh;
+        overflow-y: auto;
+        box-shadow: var(--shadow-xl);
+        animation: modalIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      @keyframes modalIn {
+        from {
+          opacity: 0;
+          transform: scale(0.94) translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1) translateY(0);
+        }
+      }
+      .modal-head {
+        padding: 22px 24px 0;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        margin-bottom: 4px;
+      }
+      .modal-title {
+        font-family: "Fraunces", serif;
+        font-size: 26px;
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+      .modal-sub {
+        font-size: 13px;
+        color: var(--text-muted);
+        margin-top: 2px;
+      }
+      .modal-close-x {
+        background: var(--surface-3);
+        border: none;
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        font-size: 15px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-secondary);
+        transition: background 0.12s;
+        flex-shrink: 0;
+      }
+      .modal-close-x:hover {
+        background: var(--border);
+      }
+      .modal-body {
+        padding: 16px 24px 24px;
+      }
+
+      .field {
+        margin-bottom: 14px;
+      }
+      .field label {
+        display: block;
+        font-size: 12px;
+        font-weight: 800;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 5px;
+      }
+      .field input,
+      .field select,
+      .field textarea {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1.5px solid var(--border);
+        border-radius: var(--r-md);
+        font-family: inherit;
+        font-size: 13.5px;
+        color: var(--text-primary);
+        background: var(--surface-2);
+        outline: none;
+        transition:
+          border-color 0.15s,
+          background 0.15s;
+      }
+      .field input:focus,
+      .field select:focus,
+      .field textarea:focus {
+        border-color: var(--brand-light);
+        background: var(--surface);
+      }
+      .field textarea {
+        resize: vertical;
+        min-height: 72px;
+      }
+      .field-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .upload-box {
+        border: 2px dashed var(--border);
+        border-radius: var(--r-md);
+        padding: 22px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: var(--surface-2);
+        position: relative;
+        overflow: hidden;
+      }
+      .upload-box:hover {
+        border-color: var(--brand-light);
+        background: var(--surface-3);
+      }
+      .upload-box input {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        cursor: pointer;
+        width: 100%;
+        height: 100%;
+      }
+      .upload-icon {
+        font-size: 28px;
+        margin-bottom: 6px;
+      }
+      .upload-text {
+        font-size: 13px;
+        color: var(--text-muted);
+        font-weight: 600;
+      }
+      .upload-sub {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-top: 3px;
+      }
+
+      .preview-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .preview-item {
+        position: relative;
+        width: 68px;
+        height: 68px;
+        border-radius: 10px;
+        overflow: hidden;
+        border: 2px solid var(--border);
+      }
+      .preview-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .preview-rm {
+        position: absolute;
+        top: -1px;
+        right: -1px;
+        background: #ef4444;
+        color: #fff;
+        border: none;
+        border-radius: 0 0 0 8px;
+        width: 20px;
+        height: 20px;
+        font-size: 10px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .modal-actions {
+        display: flex;
+        gap: 10px;
+      }
+      .btn-cancel {
+        flex: 1;
+        padding: 12px;
+        background: var(--surface-3);
+        border: none;
+        border-radius: var(--r-md);
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        font-family: inherit;
+        color: var(--text-secondary);
+        transition: background 0.12s;
+      }
+      .btn-cancel:hover {
+        background: var(--border);
+      }
+      .btn-save {
+        flex: 2;
+        padding: 12px;
+        background: var(--brand);
+        border: none;
+        border-radius: var(--r-md);
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        font-family: inherit;
+        color: #fff;
+        transition: background 0.15s;
+      }
+      .btn-save:hover {
+        background: var(--brand-mid);
+      }
+
+      /* LOCATION MODAL */
+      .location-modal-body {
+        padding: 0 24px 24px;
+      }
+      .loc-instructions {
+        background: #fffbeb;
+        border: 1.5px solid #fde68a;
+        border-radius: var(--r-md);
+        padding: 14px;
+        margin-bottom: 16px;
+        font-size: 13px;
+        line-height: 1.75;
+        color: #78350f;
+      }
+      .loc-or {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 14px;
+        font-size: 12px;
+        color: var(--text-muted);
+        font-weight: 600;
+      }
+      .loc-or::before,
+      .loc-or::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--border);
+      }
+
+      /* TOAST */
+      .toast {
+        position: fixed;
+        bottom: 28px;
+        left: 50%;
+        transform: translateX(-50%) translateY(16px);
+        background: var(--text-primary);
+        color: #fff;
+        padding: 11px 22px;
+        border-radius: 30px;
+        font-size: 13.5px;
+        font-weight: 600;
+        opacity: 0;
+        transition: all 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+        z-index: 9999;
+        pointer-events: none;
+        white-space: nowrap;
+        box-shadow: var(--shadow-lg);
+      }
+      .toast.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+
+      /* MAP POPUPS */
+      .leaflet-container {
+        font-family: "Plus Jakarta Sans", sans-serif;
+      }
+      .custom-popup .leaflet-popup-content-wrapper {
+        border-radius: 16px;
+        box-shadow: var(--shadow-lg);
+        border: 2px solid var(--brand-light);
+        padding: 0;
+      }
+      .custom-popup .leaflet-popup-content {
+        margin: 0;
+      }
+      .map-popup {
+        padding: 14px 16px;
+        min-width: 200px;
+      }
+      .map-popup-emoji {
+        font-size: 24px;
+        margin-bottom: 5px;
+      }
+      .map-popup h3 {
+        font-size: 14px;
+        font-weight: 800;
+        color: var(--text-primary);
+        margin-bottom: 3px;
+      }
+      .map-popup p {
+        font-size: 11.5px;
+        color: var(--text-muted);
+        margin-bottom: 8px;
+      }
+      .map-popup-btn {
+        width: 100%;
+        background: var(--brand);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-size: 12.5px;
+        font-weight: 700;
+        cursor: pointer;
+        font-family: inherit;
+        transition: background 0.12s;
+      }
+      .map-popup-btn:hover {
+        background: var(--brand-mid);
+      }
+
+      /* USER DOT */
+      @keyframes user-pulse {
+        0%,
+        100% {
+          box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
+        }
+        50% {
+          box-shadow: 0 0 0 10px rgba(59, 130, 246, 0.08);
+        }
+      }
+
+      /* RESPONSIVE */
+      @media (max-width: 900px) {
+        .detail-layout {
+          grid-template-columns: 1fr;
+        }
+        .detail-side {
+          flex-direction: row;
+          flex-wrap: wrap;
+        }
+        .detail-side > * {
+          flex: 1;
+          min-width: 280px;
+        }
+        #detail-mini-map {
+          display: none;
+        }
+      }
+      @media (max-width: 768px) {
+        .sidebar {
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          width: 100%;
+          height: 46vh;
+          border-radius: 20px 20px 0 0;
+          border-right: none;
+          border-top: 1px solid var(--border);
+          z-index: 50;
+          box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.1);
+        }
+        #page-home {
+          overflow: hidden;
+        }
+        .home-body {
+          flex-direction: column;
+        }
+        #map {
+          height: 54vh;
+        }
+        .logo-tagline {
+          display: none;
+        }
+        .search-bar-wrap {
+          max-width: none;
+        }
+        .topbar-actions .topbar-btn span {
+          display: none;
+        }
+        .detail-layout {
+          padding: 16px;
+        }
+        .detail-shop-name {
+          font-size: 26px;
+        }
+      }
+      @media (max-width: 480px) {
+        .topbar {
+          padding: 0 12px;
+          gap: 8px;
+        }
+        .logo-tagline {
+          display: none;
+        }
+        .logo-name {
+          font-size: 17px;
+        }
+      }
+
+      /* EMPTY STATE */
+      .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--text-muted);
+      }
+      .empty-state .e-icon {
+        font-size: 42px;
+        margin-bottom: 10px;
+      }
+      .empty-state .e-text {
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      /* LOADING SKELETON */
+      .skeleton {
+        background: linear-gradient(
+          90deg,
+          var(--surface-3) 25%,
+          var(--border) 50%,
+          var(--surface-3) 75%
+        );
+        background-size: 200% 100%;
+        animation: shimmer 1.4s infinite;
+        border-radius: 6px;
+      }
+      @keyframes shimmer {
+        from {
+          background-position: 200% 0;
+        }
+        to {
+          background-position: -200% 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ═══════════════════════════════════════════
+     PAGE 1: HOME + MAP
+═══════════════════════════════════════════ -->
+    <div id="page-home" class="page active">
+      <header class="topbar">
+        <a href="#" class="logo-wrap">
+          <div class="logo-mark">🏘️</div>
+          <div>
+            <div class="logo-name">VillageMarket</div>
+            <div class="logo-tagline">Find Local Shops Near You</div>
+          </div>
+        </a>
+
+        <div class="search-bar-wrap">
+          <span class="search-icon">⌕</span>
+          <input
+            type="text"
+            class="search-bar"
+            id="searchInput"
+            placeholder="Search shops, products, village..."
+            autocomplete="off"
+            oninput="handleSearch(this.value)"
+            onfocus="openDropdown()"
+          />
+          <button class="search-clear" onclick="clearSearch()">✕</button>
+          <div class="search-dropdown" id="searchDropdown"></div>
+        </div>
+
+        <div class="topbar-actions">
+          <button class="topbar-btn" onclick="locateUser()">
+            📍 <span>Near Me</span>
+          </button>
+          <button class="topbar-btn accent" onclick="openAddShop()">
+            ＋ <span>Add Shop</span>
+          </button>
+          <button class="topbar-btn" id="authBtn" onclick="doSignIn()">
+            🔑 Sign in
+          </button>
+        </div>
+      </header>
+
+      <div class="home-body">
+        <aside class="sidebar">
+          <div class="sidebar-header">
+            <div class="filter-pills" id="filterPills">
+              <button class="pill active" onclick="setFilter('all', this)">
+                🏪 All
+              </button>
+              <button class="pill" onclick="setFilter('grocery', this)">
+                🛒 Grocery
+              </button>
+              <button class="pill" onclick="setFilter('medical', this)">
+                💊 Medical
+              </button>
+              <button class="pill" onclick="setFilter('hardware', this)">
+                🔧 Hardware
+              </button>
+              <button class="pill" onclick="setFilter('clothes', this)">
+                👗 Clothes
+              </button>
+              <button class="pill" onclick="setFilter('food', this)">
+                🍛 Food
+              </button>
+              <button class="pill" onclick="setFilter('dairy', this)">
+                🥛 Dairy
+              </button>
+              <button class="pill" onclick="setFilter('electronics', this)">
+                📱 Electronics
+              </button>
+            </div>
+          </div>
+
+          <div class="sidebar-meta">
+            <span class="results-label" id="resultsLabel">Loading...</span>
+            <button
+              class="nearby-toggle"
+              id="nearbyToggle"
+              onclick="toggleNearby()"
+            >
+              <span class="dot"></span> Near Me
+            </button>
+          </div>
+
+          <div class="shops-scroll" id="shopsScroll"></div>
+        </aside>
+
+        <div id="map"></div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+     PAGE 2: SHOP DETAIL
+═══════════════════════════════════════════ -->
+    <div id="page-detail" class="page">
+      <header class="detail-topbar">
+        <button class="back-btn" onclick="goBack()">← Back</button>
+        <span class="detail-topbar-title" id="detailTopTitle">Shop Detail</span>
+        <button
+          class="topbar-btn"
+          style="
+            background: var(--surface-3);
+            color: var(--text-primary);
+            border: 1.5px solid var(--border);
+          "
+          onclick="shareShop()"
+        >
+          ↗ Share
+        </button>
+      </header>
+
+      <div class="detail-layout" id="detailLayout">
+        <!-- Filled dynamically -->
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+     ADD SHOP MODAL
+═══════════════════════════════════════════ -->
+    <div class="overlay" id="addOverlay">
+      <div class="modal">
+        <div class="modal-head">
+          <div>
+            <div class="modal-title">Add Your Shop</div>
+            <div class="modal-sub">
+              Get discovered on the map — free forever
+            </div>
+          </div>
+          <button class="modal-close-x" onclick="closeAddShop()">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="field">
+            <label>📷 Shop Photos (up to 5)</label>
+            <div class="upload-box">
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onchange="handlePhotos(this)"
+              />
+              <div class="upload-icon">📸</div>
+              <div class="upload-text">Click or drag photos here</div>
+              <div class="upload-sub">JPG, PNG · Max 5 photos · 5MB each</div>
+            </div>
+            <div class="preview-grid" id="previewGrid"></div>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label>Shop Name *</label>
+              <input
+                type="text"
+                id="f-name"
+                placeholder="e.g. Ram Kirana Store"
+              />
+            </div>
+            <div class="field">
+              <label>Category *</label>
+              <select id="f-type">
+                <option value="grocery">🛒 Grocery</option>
+                <option value="medical">💊 Medical</option>
+                <option value="hardware">🔧 Hardware</option>
+                <option value="clothes">👗 Clothes</option>
+                <option value="food">🍛 Food & Dhaba</option>
+                <option value="dairy">🥛 Dairy</option>
+                <option value="electronics">📱 Electronics</option>
+                <option value="other">🏪 Other</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label>Owner Name</label>
+              <input type="text" id="f-owner" placeholder="e.g. Ramlal Ji" />
+            </div>
+            <div class="field">
+              <label>Village / Area</label>
+              <input type="text" id="f-village" placeholder="e.g. Rampur, UP" />
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label>📞 Mobile *</label>
+              <input type="tel" id="f-phone" placeholder="9876543210" />
+            </div>
+            <div class="field">
+              <label>💬 WhatsApp</label>
+              <input type="tel" id="f-wa" placeholder="9876543210" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Products Available (comma separated)</label>
+            <textarea
+              id="f-products"
+              placeholder="Wheat flour, Rice, Dal, Sugar, Tea..."
+            ></textarea>
+          </div>
+
+          <div class="field">
+            <label>About Your Shop</label>
+            <textarea
+              id="f-desc"
+              placeholder="Tell customers what makes your shop special..."
+            ></textarea>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label>🕐 Opening Time</label>
+              <input type="text" id="f-open" placeholder="7:00 AM" />
+            </div>
+            <div class="field">
+              <label>🕘 Closing Time</label>
+              <input type="text" id="f-close" placeholder="9:00 PM" />
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeAddShop()">Cancel</button>
+            <button class="btn-save" onclick="saveShop()">✓ Add to Map</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOCATION MODAL -->
+    <div class="overlay" id="locOverlay">
+      <div class="modal" style="max-width: 440px">
+        <div class="modal-head">
+          <div>
+            <div class="modal-title">📍 Location Access</div>
+            <div class="modal-sub">Allow location to see shops near you</div>
+          </div>
+          <button class="modal-close-x" onclick="closeLoc()">✕</button>
+        </div>
+        <div class="location-modal-body">
+          <div class="loc-instructions">
+            <strong>To enable location in your browser:</strong><br />
+            🖥️ <b>Chrome / Edge:</b> Click 🔒 in address bar → Location →
+            Allow<br />
+            📱 <b>Android:</b> Browser menu → Site Settings → Location →
+            Allow<br />
+            🍎 <b>iPhone:</b> Settings → Safari → Location → Allow<br />
+            Then <b>refresh</b> and try again.
+          </div>
+          <div class="loc-or">or enter your village manually</div>
+          <div class="field">
+            <label>Village / Town Name</label>
+            <input
+              type="text"
+              id="manualLoc"
+              placeholder="e.g. Rampur, Uttar Pradesh"
+              onkeydown="if (event.key === 'Enter') goManual();"
+            />
+          </div>
+          <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeLoc()">Close</button>
+            <button class="btn-save" onclick="goManual()">
+              🗺 Go to Location
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
     <script type="module">
+      /* ═══════════════════════════════════════════
+   FIREBASE IMPORTS
+═══════════════════════════════════════════ */
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
       import {
         getFirestore,
@@ -23,7 +1898,6 @@
         getDocs,
         doc,
         updateDoc,
-        deleteDoc,
         query,
         orderBy,
         onSnapshot,
@@ -32,10 +1906,11 @@
         arrayRemove,
         serverTimestamp,
         where,
+        getDoc,
       } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
       import {
         getStorage,
-        ref,
+        ref as sRef,
         uploadBytes,
         getDownloadURL,
       } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
@@ -47,17 +1922,9 @@
         onAuthStateChanged,
       } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-      // =====================================================================
-      // 🔥 FIREBASE CONFIG — Apna Firebase config yahan paste karein
-      // Steps:
-      // 1. https://console.firebase.google.com pe jaao
-      // 2. New Project banao "GaonBazaar"
-      // 3. Web app add karo
-      // 4. Neeche config copy karke yahan paste karo
-      // 5. Firestore Database enable karo (test mode)
-      // 6. Storage enable karo
-      // 7. Authentication > Google sign-in enable karo
-      // =====================================================================
+      /* ═══════════════════════════════════════════
+   FIREBASE CONFIG  ✅ YOUR CONFIG HERE
+═══════════════════════════════════════════ */
       const firebaseConfig = {
         apiKey: "AIzaSyAvBOowJio6CFOXNp586ToGhHnnun3Z21g",
         authDomain: "gaon-bazaar-a723b.firebaseapp.com",
@@ -68,2134 +1935,976 @@
         measurementId: "G-KKXPMSNC0S",
       };
 
-      let app, db, storage, auth, provider;
-      let isFirebaseReady = false;
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      const storage = getStorage(app);
+      const auth = getAuth(app);
+      const provider = new GoogleAuthProvider();
 
-      try {
-        if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
-          app = initializeApp(firebaseConfig);
-          db = getFirestore(app);
-          storage = getStorage(app);
-          auth = getAuth(app);
-          provider = new GoogleAuthProvider();
-          isFirebaseReady = true;
-          console.log("✅ Firebase connected!");
-        }
-      } catch (e) {
-        console.log("Firebase not configured — demo mode active");
-      }
-
-      // =====================================================================
-      // DEMO DATA (shown when Firebase not configured)
-      // =====================================================================
-      const DEMO_SHOPS = [
-        {
-          id: "d1",
-          name: "राम किराना स्टोर",
-          type: "grocery",
-          typeLabel: "किराना दुकान",
+      /* ═══════════════════════════════════════════
+   TYPE META (unchanged)
+═══════════════════════════════════════════ */
+      const TYPE_META = {
+        grocery: {
+          label: "Grocery Store",
           emoji: "🛒",
-          owner: "रामलाल शर्मा",
-          phone: "9876543210",
-          whatsapp: "9876543210",
-          village: "रामपुर गाँव",
-          products: [
-            "आटा",
-            "दाल",
-            "चावल",
-            "तेल",
-            "साबुन",
-            "बिस्कुट",
-            "चाय",
-            "नमक",
-          ],
-          rating: 4.5,
-          reviewCount: 24,
-          likes: ["u1", "u2", "u3"],
-          open: "7:00 AM",
-          close: "9:00 PM",
-          isOpen: true,
-          lat: 26.8467,
-          lng: 80.9462,
-          photos: [],
-          description:
-            "हमारे यहाँ सभी जरूरी घरेलू सामान मिलता है। 20 साल से सेवा में।",
-          createdAt: new Date(),
+          color: "#0d6e4e",
+          bg: "#e6f4ef",
         },
-        {
-          id: "d2",
-          name: "संजीवनी मेडिकल",
-          type: "medical",
-          typeLabel: "दवाखाना",
+        medical: {
+          label: "Medical Shop",
           emoji: "💊",
-          owner: "डॉ. सुरेश गुप्ता",
-          phone: "9765432100",
-          whatsapp: "9765432100",
-          village: "रामपुर गाँव",
-          products: [
-            "पैरासिटामॉल",
-            "बैंडेज",
-            "विटामिन",
-            "सिरप",
-            "एंटीबायोटिक",
-            "BP दवाई",
-          ],
-          rating: 4.8,
-          reviewCount: 18,
-          likes: ["u1"],
-          open: "8:00 AM",
-          close: "8:00 PM",
-          isOpen: true,
-          lat: 26.849,
-          lng: 80.944,
-          photos: [],
-          description:
-            "सभी दवाइयाँ उचित मूल्य पर। डॉक्टर की पर्ची पर विशेष छूट।",
-          createdAt: new Date(),
+          color: "#dc2626",
+          bg: "#fee2e2",
         },
-        {
-          id: "d3",
-          name: "शिव हार्डवेयर",
-          type: "hardware",
-          typeLabel: "हार्डवेयर",
+        hardware: {
+          label: "Hardware Store",
           emoji: "🔧",
-          owner: "महेश यादव",
-          phone: "9654321098",
-          whatsapp: null,
-          village: "रामपुर गाँव",
-          products: ["पेंट", "पाइप", "सीमेंट", "बल्ब", "तार", "ताला", "औजार"],
-          rating: 4.2,
-          reviewCount: 9,
-          likes: [],
-          open: "9:00 AM",
-          close: "7:00 PM",
-          isOpen: false,
-          lat: 26.8445,
-          lng: 80.948,
-          photos: [],
-          description: "घर निर्माण का सारा सामान एक जगह।",
-          createdAt: new Date(),
+          color: "#d97706",
+          bg: "#fef3c7",
         },
-        {
-          id: "d4",
-          name: "लक्ष्मी कपड़ा भंडार",
-          type: "clothes",
-          typeLabel: "कपड़े की दुकान",
+        clothes: {
+          label: "Clothing Store",
           emoji: "👗",
-          owner: "लक्ष्मीदेवी",
-          phone: "9543210987",
-          whatsapp: "9543210987",
-          village: "रामपुर गाँव",
-          products: [
-            "साड़ी",
-            "कुर्ता",
-            "जींस",
-            "शर्ट",
-            "दुपट्टा",
-            "लेहंगा",
-            "सलवार",
-          ],
-          rating: 4.6,
-          reviewCount: 31,
-          likes: ["u1", "u2"],
-          open: "10:00 AM",
-          close: "8:00 PM",
-          isOpen: true,
-          lat: 26.8502,
-          lng: 80.9455,
-          photos: [],
-          description: "हर मौसम के कपड़े, शादी-ब्याह के लिए खास कलेक्शन।",
-          createdAt: new Date(),
+          color: "#7c3aed",
+          bg: "#ede9fe",
         },
-        {
-          id: "d5",
-          name: "माँ अन्नपूर्णा ढाबा",
-          type: "food",
-          typeLabel: "खाने की दुकान",
+        food: {
+          label: "Food & Dhaba",
           emoji: "🍛",
-          owner: "विमला देवी",
-          phone: "9432109876",
-          whatsapp: "9432109876",
-          village: "रामपुर गाँव",
-          products: [
-            "थाली",
-            "दाल-चावल",
-            "रोटी",
-            "सब्जी",
-            "चाय",
-            "लस्सी",
-            "पूड़ी",
-          ],
-          rating: 4.9,
-          reviewCount: 67,
-          likes: ["u1", "u2", "u3"],
-          open: "6:00 AM",
-          close: "10:00 PM",
-          isOpen: true,
-          lat: 26.8458,
-          lng: 80.95,
-          photos: [],
-          description: "घर जैसा खाना, माँ के हाथ का स्वाद। रोज़ताज़ा बनता है।",
-          createdAt: new Date(),
+          color: "#ea580c",
+          bg: "#ffedd5",
         },
-        {
-          id: "d6",
-          name: "गोपाल डेयरी",
-          type: "dairy",
-          typeLabel: "डेयरी",
+        dairy: {
+          label: "Dairy Farm",
           emoji: "🥛",
-          owner: "गोपाल सिंह",
-          phone: "9321098765",
-          whatsapp: null,
-          village: "रामपुर गाँव",
-          products: ["दूध", "दही", "पनीर", "मक्खन", "घी", "छाछ", "खोया"],
-          rating: 4.7,
-          reviewCount: 12,
-          likes: [],
-          open: "5:00 AM",
-          close: "12:00 PM",
-          isOpen: false,
-          lat: 26.8478,
-          lng: 80.9418,
-          photos: [],
-          description: "देसी गाय का शुद्ध दूध और दूध से बने उत्पाद।",
-          createdAt: new Date(),
+          color: "#2563eb",
+          bg: "#dbeafe",
         },
-      ];
-
-      const DEMO_REVIEWS = {
-        d1: [
-          {
-            id: "r1",
-            shopId: "d1",
-            userName: "Rahul Kumar",
-            userPhoto: "",
-            rating: 5,
-            text: "बहुत अच्छी दुकान है! सारा सामान मिलता है और दाम भी ठीक हैं।",
-            createdAt: new Date(Date.now() - 86400000),
-          },
-          {
-            id: "r2",
-            shopId: "d1",
-            userName: "Priya Singh",
-            userPhoto: "",
-            rating: 4,
-            text: "रामलाल जी बहुत अच्छे हैं। उधार भी देते हैं।",
-            createdAt: new Date(Date.now() - 172800000),
-          },
-        ],
-        d5: [
-          {
-            id: "r3",
-            shopId: "d5",
-            userName: "Suresh Yadav",
-            userPhoto: "",
-            rating: 5,
-            text: "खाना बहुत स्वादिष्ट है! थाली ₹60 में मिलती है।",
-            createdAt: new Date(Date.now() - 3600000),
-          },
-        ],
+        electronics: {
+          label: "Electronics",
+          emoji: "📱",
+          color: "#0891b2",
+          bg: "#cffafe",
+        },
+        other: { label: "Shop", emoji: "🏪", color: "#4b5563", bg: "#f3f4f6" },
       };
 
-      // =====================================================================
-      // STATE
-      // =====================================================================
+      /* ═══════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════ */
       let shops = [];
-      let reviewsCache = {};
+      let reviewsCache = {}; // { shopId: [reviews] }
       let currentFilter = "all";
-      let currentUser = null;
+      let nearbyMode = false;
+      let userLat = null,
+        userLng = null;
+      let uploadedPhotos = []; // base64 previews locally
+      let uploadedPhotoFiles = []; // actual File objects for Firebase upload
       let activeShopId = null;
+      let reviewRating = 5;
+      let currentDetailShopId = null;
+      let currentUser = null;
       let map,
-        markers = {};
-      let uploadedPhotoURLs = [];
-      let currentPhotoIndex = 0;
-      let searchTimeout = null;
+        markers = {},
+        userMarker = null;
+      let miniMap = null;
 
-      // =====================================================================
-      // INIT
-      // =====================================================================
-      window.addEventListener("DOMContentLoaded", async () => {
-        initMap();
-        await loadShops();
+      /* expose globals so inline onclick handlers work */
+      window._vm = {}; // namespace
 
-        if (isFirebaseReady) {
-          onAuthStateChanged(auth, (user) => {
-            currentUser = user;
-            updateAuthUI();
-          });
-          // Realtime listener
-          const q = query(
-            collection(db, "shops"),
-            orderBy("createdAt", "desc"),
-          );
-          onSnapshot(q, (snap) => {
-            shops = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-            renderAll();
-          });
+      /* ═══════════════════════════════════════════
+   AUTH
+═══════════════════════════════════════════ */
+      onAuthStateChanged(auth, (user) => {
+        currentUser = user;
+        const btn = document.getElementById("authBtn");
+        if (!btn) return;
+        if (user) {
+          btn.innerHTML = `<img src="${user.photoURL || ""}" onerror="this.style.display='none'"
+      style="width:22px;height:22px;border-radius:50%;margin-right:5px;vertical-align:middle">
+      ${user.displayName?.split(" ")[0] || "Me"}
+      <span style="opacity:.55;font-size:10px;margin-left:4px" onclick="doSignOut(event)">✕</span>`;
+          btn.style.background = "rgba(255,255,255,0.18)";
+        } else {
+          btn.innerHTML = "🔑 Sign in";
+          btn.style.background = "rgba(255,255,255,0.12)";
         }
       });
 
-      async function loadShops() {
-        if (isFirebaseReady) {
-          try {
-            const snap = await getDocs(
-              query(collection(db, "shops"), orderBy("createdAt", "desc")),
-            );
-            shops = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-          } catch (e) {
-            shops = [...DEMO_SHOPS];
-          }
-        } else {
-          shops = [...DEMO_SHOPS];
+      window.doSignIn = async () => {
+        try {
+          await signInWithPopup(auth, provider);
+          showToast("✅ Signed in!");
+        } catch (e) {
+          showToast("❌ Sign-in failed");
         }
-        renderAll();
+      };
+      window.doSignOut = async (e) => {
+        e?.stopPropagation();
+        await signOut(auth);
+        showToast("👋 Signed out");
+      };
+
+      /* ═══════════════════════════════════════════
+   FIRESTORE — REALTIME SHOPS LISTENER
+═══════════════════════════════════════════ */
+      function startShopsListener() {
+        const q = query(collection(db, "shops"), orderBy("createdAt", "desc"));
+        onSnapshot(
+          q,
+          (snap) => {
+            shops = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+            renderAll();
+          },
+          (err) => {
+            console.error("Firestore error:", err);
+            showToast("⚠️ Could not load shops from database");
+          },
+        );
       }
 
-      // =====================================================================
-      // MAP
-      // =====================================================================
-      function initMap() {
+      /* ═══════════════════════════════════════════
+   REVIEWS — load per shop
+═══════════════════════════════════════════ */
+      async function loadReviews(shopId) {
+        if (reviewsCache[shopId]) return reviewsCache[shopId];
+        try {
+          const q = query(
+            collection(db, "reviews"),
+            where("shopId", "==", shopId),
+            orderBy("createdAt", "desc"),
+          );
+          const snap = await getDocs(q);
+          reviewsCache[shopId] = snap.docs.map((d) => ({
+            id: d.id,
+            ...d.data(),
+          }));
+        } catch (e) {
+          reviewsCache[shopId] = [];
+        }
+        return reviewsCache[shopId];
+      }
+
+      /* ═══════════════════════════════════════════
+   MAP INIT
+═══════════════════════════════════════════ */
+      document.addEventListener("DOMContentLoaded", () => {
         map = L.map("map", {
-          center: [26.848, 80.946],
-          zoom: 15,
+          center: [20.5937, 78.9629],
+          zoom: 5,
           zoomControl: false,
         });
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          attribution: "© OpenStreetMap | गाँव बाज़ार",
+          attribution: "© OpenStreetMap contributors",
         }).addTo(map);
         L.control.zoom({ position: "bottomright" }).addTo(map);
-        map.on("click", closeDetail);
-      }
-
-      const typeColors = {
-        grocery: "#1a7c4f",
-        medical: "#ef4444",
-        hardware: "#f59e0b",
-        clothes: "#8b5cf6",
-        food: "#f97316",
-        dairy: "#3b82f6",
-        electronics: "#06b6d4",
-        other: "#64748b",
-      };
-
-      function createMarkerIcon(shop) {
-        const color = typeColors[shop.type] || "#1a7c4f";
-        return L.divIcon({
-          html: `<div style="background:${color};color:#fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);width:42px;height:42px;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 4px 15px rgba(0,0,0,0.35);border:3px solid #fff;"><span style="transform:rotate(45deg)">${shop.emoji || "🏪"}</span></div>`,
-          iconSize: [42, 42],
-          iconAnchor: [21, 42],
-          popupAnchor: [0, -48],
-          className: "",
+        map.on("click", () => {
+          document
+            .querySelectorAll(".shop-card")
+            .forEach((c) => c.classList.remove("highlighted"));
+          activeShopId = null;
         });
+
+        // Start Firebase realtime listener
+        startShopsListener();
+        // Try silent GPS
+        tryAutoLocate();
+      });
+
+      function tryAutoLocate() {
+        if (!navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            userLat = pos.coords.latitude;
+            userLng = pos.coords.longitude;
+            placeUserDot(userLat, userLng);
+            map.flyTo([userLat, userLng], 14);
+            if (nearbyMode) renderAll();
+          },
+          () => {},
+          { timeout: 6000 },
+        );
       }
 
+      function placeUserDot(lat, lng) {
+        if (userMarker) map.removeLayer(userMarker);
+        userMarker = L.marker([lat, lng], {
+          icon: L.divIcon({
+            html: `<div style="background:#3b82f6;width:20px;height:20px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 5px rgba(59,130,246,0.25)"></div>`,
+            iconSize: [20, 20],
+            iconAnchor: [10, 10],
+            className: "",
+          }),
+        })
+          .addTo(map)
+          .bindPopup("📍 You are here");
+      }
+
+      /* ═══════════════════════════════════════════
+   DISTANCE
+═══════════════════════════════════════════ */
+      function haversine(lat1, lng1, lat2, lng2) {
+        const R = 6371,
+          dLat = ((lat2 - lat1) * Math.PI) / 180,
+          dLng = ((lng2 - lng1) * Math.PI) / 180;
+        const a =
+          Math.sin(dLat / 2) ** 2 +
+          Math.cos((lat1 * Math.PI) / 180) *
+            Math.cos((lat2 * Math.PI) / 180) *
+            Math.sin(dLng / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      }
+      function formatDist(km) {
+        return km < 1 ?
+            `${Math.round(km * 1000)}m away`
+          : `${km.toFixed(1)}km away`;
+      }
+
+      /* ═══════════════════════════════════════════
+   RENDER
+═══════════════════════════════════════════ */
+      function getFiltered(searchQ) {
+        let list = [...shops];
+        const q = (
+          searchQ ||
+          document.getElementById("searchInput").value ||
+          ""
+        )
+          .toLowerCase()
+          .trim();
+        if (currentFilter !== "all")
+          list = list.filter((s) => s.type === currentFilter);
+        if (q)
+          list = list.filter(
+            (s) =>
+              s.name?.toLowerCase().includes(q) ||
+              (s.products || []).some((p) => p.toLowerCase().includes(q)) ||
+              s.village?.toLowerCase().includes(q) ||
+              s.owner?.toLowerCase().includes(q) ||
+              (TYPE_META[s.type]?.label || "").toLowerCase().includes(q),
+          );
+        if (nearbyMode && userLat) {
+          list = list
+            .map((s) => ({
+              ...s,
+              dist: haversine(userLat, userLng, s.lat || 0, s.lng || 0),
+            }))
+            .filter((s) => s.dist < 50)
+            .sort((a, b) => a.dist - b.dist);
+        }
+        return list;
+      }
+
+      function renderAll(searchQ) {
+        const list = getFiltered(searchQ);
+        renderMarkers(list);
+        renderCards(list);
+        document.getElementById("resultsLabel").textContent =
+          `${list.length} shop${list.length !== 1 ? "s" : ""} found`;
+      }
+
+      /* MARKERS */
       function renderMarkers(list) {
         Object.values(markers).forEach((m) => map.removeLayer(m));
         markers = {};
-        list.forEach((shop) => {
-          const m = L.marker([shop.lat || 26.848, shop.lng || 80.946], {
-            icon: createMarkerIcon(shop),
-          }).addTo(map);
+        list.forEach((s) => {
+          if (!s.lat || !s.lng) return;
+          const meta = TYPE_META[s.type] || TYPE_META.other;
+          const icon = L.divIcon({
+            html: `<div style="background:${meta.color};color:#fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);width:42px;height:42px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,0.3);border:3px solid #fff;"><span style="transform:rotate(45deg);font-size:17px">${meta.emoji}</span></div>`,
+            iconSize: [42, 42],
+            iconAnchor: [21, 42],
+            popupAnchor: [0, -48],
+            className: "",
+          });
+          const m = L.marker([s.lat, s.lng], { icon }).addTo(map);
           m.bindPopup(
             `
-      <div class="popup-inner">
-        <div style="font-size:28px;margin-bottom:6px">${shop.emoji || "🏪"}</div>
-        <h3>${shop.name}</h3>
-        <p style="color:#6b8070;font-size:11px">${shop.typeLabel || ""} · ${shop.isOpen ? "🟢 खुली" : "🔴 बंद"}</p>
-        <p style="margin-top:4px">⭐ ${(shop.rating || 4).toFixed(1)} · ❤️ ${(shop.likes || []).length}</p>
-        <button class="popup-btn" onclick="window.openShopDetail('${shop.id}')">विवरण देखें →</button>
+      <div class="map-popup">
+        <div class="map-popup-emoji">${meta.emoji}</div>
+        <h3>${s.name}</h3>
+        <p>${meta.label} · ${s.isOpen ? "🟢 Open" : "🔴 Closed"} · ⭐ ${(s.rating || 4).toFixed(1)}</p>
+        <button class="map-popup-btn" onclick="window.goToDetail('${s.id}')">View Details →</button>
       </div>`,
-            { className: "custom-popup", maxWidth: 230 },
+            { className: "custom-popup", maxWidth: 240 },
           );
-          m.on("click", () => openShopDetail(shop.id));
-          markers[shop.id] = m;
+          m.on("click", () => highlightCard(s.id));
+          markers[s.id] = m;
         });
       }
 
-      // =====================================================================
-      // RENDER CARDS
-      // =====================================================================
-      function renderAll() {
-        const q =
-          (
-            document.getElementById("globalSearch") || {}
-          ).value?.toLowerCase() || "";
-        const filtered = shops.filter((s) => {
-          const matchType = currentFilter === "all" || s.type === currentFilter;
-          const matchSearch =
-            !q ||
-            s.name?.toLowerCase().includes(q) ||
-            (s.products || []).some((p) => p.toLowerCase().includes(q)) ||
-            s.village?.toLowerCase().includes(q);
-          return matchType && matchSearch;
-        });
-
-        document.getElementById("resultsCount").textContent =
-          `${filtered.length} दुकानें मिलीं`;
-        renderMarkers(filtered);
-
-        const list = document.getElementById("shopsList");
-        list.innerHTML = "";
-        filtered.forEach((shop) => {
-          const card = document.createElement("div");
-          card.className = "shop-card";
-          card.id = `card-${shop.id}`;
-          if (shop.id === activeShopId) card.classList.add("active");
-          const likesArr = shop.likes || [];
-          const liked = currentUser && likesArr.includes(currentUser.uid);
-          const color = typeColors[shop.type] || "#1a7c4f";
-          const mainPhoto =
-            shop.photos && shop.photos.length > 0 ? shop.photos[0] : null;
-          card.innerHTML = `
-      <div class="shop-card-img" style="${mainPhoto ? "" : `background:linear-gradient(135deg,${color}22,${color}44)`}">
-        ${mainPhoto ? `<img src="${mainPhoto}" alt="${shop.name}" style="width:100%;height:100%;object-fit:cover">` : `<span style="font-size:46px">${shop.emoji || "🏪"}</span>`}
-        <div class="shop-badge ${shop.isOpen ? "open" : "closed"}">${shop.isOpen ? "🟢 खुली" : "🔴 बंद"}</div>
-        ${(shop.photos || []).length > 1 ? `<div class="photo-count">📷 ${shop.photos.length}</div>` : ""}
-      </div>
-      <div class="shop-card-body">
-        <div class="shop-name">${shop.name}</div>
-        <div class="shop-type" style="color:${color}">${shop.typeLabel || ""}</div>
-        <div class="shop-meta">
-          <span>⭐ ${(shop.rating || 4).toFixed(1)}</span>
-          <span style="color:#9ca3af">·</span>
-          <span>💬 ${shop.reviewCount || 0} reviews</span>
-          <span style="color:#9ca3af">·</span>
-          <span>📍 ${shop.village || ""}</span>
-        </div>
-        <div class="shop-items">
-          ${(shop.products || [])
-            .slice(0, 4)
-            .map((p) => `<span class="item-tag">${p}</span>`)
-            .join("")}
-          ${(shop.products || []).length > 4 ? `<span class="item-tag">+${shop.products.length - 4}</span>` : ""}
-        </div>
-      </div>
-      <div class="shop-footer">
-        <span class="shop-contact">📞 ${shop.phone || ""}</span>
-        <button class="like-btn ${liked ? "liked" : ""}" onclick="toggleLike(event,'${shop.id}')">
-          ${liked ? "❤️" : "🤍"} <span class="like-count">${likesArr.length}</span>
-        </button>
-      </div>`;
-          card.onclick = () => openShopDetail(shop.id);
-          list.appendChild(card);
-        });
-      }
-
-      // =====================================================================
-      // SHOP DETAIL
-      // =====================================================================
-      window.openShopDetail = async function (id) {
-        const shop = shops.find((s) => s.id === id);
-        if (!shop) return;
+      function highlightCard(id) {
         activeShopId = id;
-
         document
           .querySelectorAll(".shop-card")
-          .forEach((c) => c.classList.remove("active"));
-        const card = document.getElementById(`card-${id}`);
-        if (card) {
-          card.classList.add("active");
-          card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          .forEach((c) =>
+            c.classList.toggle("highlighted", c.dataset.id === id),
+          );
+        const card = document.querySelector(`.shop-card[data-id="${id}"]`);
+        if (card) card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+
+      /* CARDS */
+      function renderCards(list) {
+        const container = document.getElementById("shopsScroll");
+        if (list.length === 0) {
+          container.innerHTML = `<div class="empty-state"><div class="e-icon">🔍</div><div class="e-text">No shops found.<br>Try a different search or filter.</div></div>`;
+          return;
         }
-
-        map.flyTo([shop.lat || 26.848, shop.lng || 80.946], 16, {
-          duration: 0.8,
-        });
-        if (markers[id]) markers[id].openPopup();
-
-        const color = typeColors[shop.type] || "#1a7c4f";
-        const likesArr = shop.likes || [];
-        const liked = currentUser && likesArr.includes(currentUser.uid);
-        const photos = shop.photos || [];
-
-        // Photo gallery
-        let photoHTML = "";
-        if (photos.length > 0) {
-          photoHTML = `
-      <div class="photo-gallery" id="photoGallery">
-        <img src="${photos[0]}" alt="shop" id="mainGalleryImg" style="width:100%;height:200px;object-fit:cover;border-radius:0">
+        container.innerHTML = "";
+        list.forEach((s) => {
+          const meta = TYPE_META[s.type] || TYPE_META.other;
+          const isNearby = nearbyMode && userLat && (s.dist || 999) < 2;
+          const likes = s.likes || [];
+          const liked = currentUser && likes.includes(currentUser.uid);
+          const hasPhoto = s.photos && s.photos.length > 0;
+          const div = document.createElement("div");
+          div.className = `shop-card${isNearby ? " nearby-card" : ""}${s.id === activeShopId ? " highlighted" : ""}`;
+          div.dataset.id = s.id;
+          div.innerHTML = `
+      <div class="card-img">
         ${
-          photos.length > 1 ?
-            `
-          <div class="photo-thumbs">
-            ${photos.map((p, i) => `<img src="${p}" onclick="showPhoto(${i},'${id}')" class="thumb ${i === 0 ? "active" : ""}" alt="photo ${i}">`).join("")}
-          </div>`
+          hasPhoto ?
+            `<img src="${s.photos[0]}" alt="${s.name}" loading="lazy">`
+          : `<div class="card-emoji-bg" style="background:${meta.bg}">${meta.emoji}</div>`
+        }
+        <div class="card-status ${s.isOpen ? "open" : "closed"}">${s.isOpen ? "Open" : "Closed"}</div>
+        ${(s.photos || []).length > 1 ? `<div class="card-photo-count">📷 ${s.photos.length}</div>` : ""}
+        ${s.dist ? `<div class="card-distance">${formatDist(s.dist)}</div>` : ""}
+      </div>
+      <div class="card-body">
+        <div class="card-name">${s.name}</div>
+        <div class="card-type" style="color:${meta.color}">${meta.label}</div>
+        <div class="card-stats">
+          <span style="color:#f59e0b">★</span> <span>${(s.rating || 4).toFixed(1)}</span>
+          <span style="color:var(--border)">·</span>
+          <span>💬 ${s.reviewCount || 0}</span>
+          <span style="color:var(--border)">·</span>
+          <span>📍 ${s.village || ""}</span>
+        </div>
+        <div class="card-tags">
+          ${(s.products || [])
+            .slice(0, 4)
+            .map((p) => `<span class="tag">${p}</span>`)
+            .join("")}
+          ${(s.products || []).length > 4 ? `<span class="tag">+${s.products.length - 4}</span>` : ""}
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="card-phone">📞 ${s.phone || ""}</span>
+        <button class="like-btn ${liked ? "liked" : ""}" data-shop="${s.id}">
+          ${liked ? "❤️" : "🤍"} <span class="like-count">${likes.length}</span>
+        </button>
+      </div>`;
+          div.querySelector(".like-btn").addEventListener("click", (e) => {
+            e.stopPropagation();
+            toggleLike(s.id);
+          });
+          div.addEventListener("click", () => goToDetail(s.id));
+          container.appendChild(div);
+        });
+      }
+
+      /* ═══════════════════════════════════════════
+   DETAIL PAGE
+═══════════════════════════════════════════ */
+      window.goToDetail = async function (id) {
+        const shop = shops.find((s) => s.id === id);
+        if (!shop) return;
+        currentDetailShopId = id;
+        document.getElementById("detailTopTitle").textContent = shop.name;
+
+        // Load reviews from Firestore
+        const reviews = await loadReviews(id);
+        buildDetailPage(shop, reviews);
+
+        document.getElementById("page-home").classList.remove("active");
+        document.getElementById("page-detail").style.display = "block";
+        setTimeout(() => {
+          document.getElementById("page-detail").classList.add("active");
+          window.scrollTo(0, 0);
+          document.getElementById("page-detail").scrollTo(0, 0);
+        }, 10);
+
+        setTimeout(() => {
+          if (miniMap) {
+            miniMap.remove();
+            miniMap = null;
+          }
+          const el = document.getElementById("detail-mini-map");
+          if (el && shop.lat && shop.lng) {
+            miniMap = L.map("detail-mini-map", {
+              center: [shop.lat, shop.lng],
+              zoom: 15,
+              zoomControl: false,
+              scrollWheelZoom: false,
+              dragging: false,
+            });
+            L.tileLayer(
+              "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+            ).addTo(miniMap);
+            const meta = TYPE_META[shop.type] || TYPE_META.other;
+            L.marker([shop.lat, shop.lng], {
+              icon: L.divIcon({
+                html: `<div style="background:${meta.color};width:30px;height:30px;border-radius:50%;border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.3)">${meta.emoji}</div>`,
+                iconSize: [30, 30],
+                iconAnchor: [15, 15],
+                className: "",
+              }),
+            }).addTo(miniMap);
+          }
+        }, 250);
+      };
+
+      function buildDetailPage(shop, reviews) {
+        const meta = TYPE_META[shop.type] || TYPE_META.other;
+        const likes = shop.likes || [];
+        const liked = currentUser && likes.includes(currentUser.uid);
+
+        const starsHTML = (n) =>
+          [1, 2, 3, 4, 5]
+            .map(
+              (i) =>
+                `<span class="star-icon${i <= Math.round(n) ? "" : " empty"}">★</span>`,
+            )
+            .join("");
+
+        // Photo hero
+        const photosHTML =
+          (shop.photos || []).length > 0 ?
+            `<div class="photo-hero">
+        <img src="${shop.photos[0]}" class="photo-hero-main" id="heroImg" alt="${shop.name}">
+        ${
+          shop.photos.length > 1 ?
+            `<div class="photo-strip">
+          ${shop.photos.map((p, i) => `<div class="photo-thumb${i === 0 ? " active" : ""}" onclick="switchPhoto('${p}',this)"><img src="${p}" alt=""></div>`).join("")}
+        </div>`
           : ""
         }
-      </div>`;
-        } else {
-          photoHTML = `<div style="height:180px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,${color}22,${color}55);font-size:70px">${shop.emoji || "🏪"}</div>`;
-        }
+      </div>`
+          : `<div class="photo-hero"><div class="photo-hero-emoji" style="background:${meta.bg}">${meta.emoji}</div></div>`;
 
-        // Reviews
-        const reviews = await loadReviews(id);
+        // Reviews HTML
         const reviewsHTML =
           reviews.length > 0 ?
             reviews
-              .map(
-                (r) => `
-        <div class="review-card">
-          <div class="review-header">
-            <div class="review-avatar">${(r.userName || "?")[0].toUpperCase()}</div>
+              .map((r) => {
+                const ts =
+                  r.createdAt?.toDate ?
+                    r.createdAt.toDate().getTime()
+                  : r.createdAt || Date.now();
+                return `<div class="review-item">
+          <div class="review-top">
+            <div class="reviewer-av" style="background:${meta.color}">${(r.userName || "?")[0].toUpperCase()}</div>
             <div>
-              <div class="review-name">${r.userName || "अज्ञात"}</div>
-              <div class="review-stars">${"★".repeat(r.rating || 5)}${"☆".repeat(5 - (r.rating || 5))}</div>
+              <div class="reviewer-name">${r.userName || "Anonymous"}</div>
+              <div class="reviewer-stars">${"★".repeat(r.rating || 5)}${"☆".repeat(5 - (r.rating || 5))}</div>
             </div>
-            <div class="review-date">${formatDate(r.createdAt)}</div>
+            <div class="review-date">${timeAgo(ts)}</div>
           </div>
-          <p class="review-text">${r.text || ""}</p>
-        </div>`,
-              )
+          <div class="review-body">${r.text || ""}</div>
+        </div>`;
+              })
               .join("")
-          : `<div style="text-align:center;padding:20px;color:#6b8070;font-size:13px">अभी कोई review नहीं। पहले आप लिखें! 😊</div>`;
+          : `<div class="empty-state" style="padding:24px"><div class="e-icon">💬</div><div class="e-text">No reviews yet. Be the first!</div></div>`;
 
-        document.getElementById("detailBody").innerHTML = `
-    <div class="detail-name">${shop.name}</div>
-    <div class="detail-type" style="color:${color}">${shop.typeLabel || ""} · ${shop.isOpen ? "🟢 अभी खुली" : "🔴 अभी बंद"}</div>
-    ${shop.description ? `<p style="font-size:13px;color:#6b8070;margin-bottom:12px;line-height:1.6">${shop.description}</p>` : ""}
+        document.getElementById("detailLayout").innerHTML = `
+    <div>
+      ${photosHTML}
+      <div style="margin-top:22px">
+        <div class="detail-status-row">
+          <span class="status-badge ${shop.isOpen ? "open" : "closed"}">${shop.isOpen ? "🟢 Open Now" : "🔴 Closed"}</span>
+          <span class="type-badge">${meta.emoji} ${meta.label}</span>
+          <span style="font-size:12px;color:var(--text-muted)">${shop.isOpen ? "Until " + shop.close : "Opens " + shop.open}</span>
+        </div>
+        <h1 class="detail-shop-name">${shop.name}</h1>
+        <div class="detail-village">📍 ${shop.village || ""}</div>
 
-    <div class="detail-stats">
-      <div class="stat"><div class="val">⭐ ${(shop.rating || 4).toFixed(1)}</div><div class="lbl">Rating</div></div>
-      <div class="stat"><div class="val">❤️ ${likesArr.length}</div><div class="lbl">Likes</div></div>
-      <div class="stat"><div class="val">💬 ${shop.reviewCount || 0}</div><div class="lbl">Reviews</div></div>
-      <div class="stat"><div class="val">📦 ${(shop.products || []).length}</div><div class="lbl">Products</div></div>
-    </div>
+        <div class="rating-row">
+          <div class="rating-big">${(shop.rating || 4).toFixed(1)}</div>
+          <div class="rating-stars-col">
+            <div class="stars-row">${starsHTML(shop.rating || 4)}</div>
+            <div class="rating-sub">${shop.reviewCount || 0} reviews</div>
+          </div>
+          <div class="rating-divider"></div>
+          <div class="rating-stat"><div class="n">❤️ ${likes.length}</div><div class="l">Likes</div></div>
+          <div class="rating-divider"></div>
+          <div class="rating-stat"><div class="n">📦 ${(shop.products || []).length}</div><div class="l">Products</div></div>
+        </div>
 
-    <div class="detail-section">
-      <h4>🛍️ क्या मिलता है</h4>
-      <div class="products-grid">
-        ${(shop.products || []).map((p) => `<div class="product-item">${p}</div>`).join("")}
+        ${shop.description ? `<p class="detail-desc">${shop.description}</p>` : ""}
+
+        <div class="section-title">What's Available</div>
+        <div class="products-wrap">
+          ${(shop.products || []).map((p) => `<div class="product-chip">${p}</div>`).join("")}
+        </div>
+
+        <div class="section-title">Customer Reviews</div>
+        <div class="review-composer">
+          <div class="review-composer-title">${currentUser ? "Write a Review" : "Sign in to review"}</div>
+          <div class="star-picker" id="starPicker">
+            ${[1, 2, 3, 4, 5].map((i) => `<button class="star-pick" onclick="pickStar(${i})" style="color:#f59e0b">★</button>`).join("")}
+          </div>
+          <textarea class="review-input" id="reviewInput" placeholder="${currentUser ? "Share your experience..." : "Please sign in to write a review"}" ${currentUser ? "" : "disabled"}></textarea>
+          <button class="review-submit" onclick="submitReview('${shop.id}')" ${currentUser ? "" : 'disabled style="opacity:.5;cursor:not-allowed"'}>${currentUser ? "Post Review" : "Sign in first"}</button>
+        </div>
+        <div class="reviews-list" id="reviewsList">${reviewsHTML}</div>
       </div>
     </div>
 
-    <div class="detail-section">
-      <h4>📞 संपर्क करें</h4>
-      <div class="contact-list">
-        <div class="contact-item"><span class="icon">👤</span><div><strong>${shop.owner || ""}</strong><br><span style="font-size:11px;color:#6b8070">${shop.village || ""}</span></div></div>
-        <div class="contact-item"><span class="icon">📞</span><div><a href="tel:${shop.phone}">${shop.phone}</a></div></div>
-        ${shop.whatsapp ? `<div class="contact-item"><span class="icon">💬</span><div><a href="https://wa.me/91${shop.whatsapp}" style="color:#25d366">WhatsApp पर संपर्क करें</a></div></div>` : ""}
-        <div class="contact-item"><span class="icon">🕐</span><div>${shop.open || ""} – ${shop.close || ""}</div></div>
+    <aside class="detail-side">
+      <div class="contact-card">
+        <div class="contact-card-head">
+          <div class="contact-card-shop">Shop Owner</div>
+          <div class="contact-card-owner">${shop.owner || "Owner"}</div>
+          <div class="contact-card-hours">🕐 ${shop.open || ""} – ${shop.close || ""}</div>
+        </div>
+        <div class="contact-items">
+          <a href="tel:${shop.phone}" class="contact-row">
+            <div class="contact-icon" style="background:#e6f4ef">📞</div>
+            <div><div class="c-label">Phone</div><div class="c-value">${shop.phone || ""}</div></div>
+          </a>
+          ${
+            shop.whatsapp ?
+              `<a href="https://wa.me/91${shop.whatsapp}" target="_blank" class="contact-row">
+            <div class="contact-icon" style="background:#dcfce7">💬</div>
+            <div><div class="c-label">WhatsApp</div><div class="c-value">${shop.whatsapp}</div></div>
+          </a>`
+            : ""
+          }
+          <div class="contact-row">
+            <div class="contact-icon" style="background:#f0fdf4">📍</div>
+            <div><div class="c-label">Location</div><div class="c-value">${shop.village || ""}</div></div>
+          </div>
+        </div>
+        <div class="cta-btns">
+          <a href="tel:${shop.phone}" class="cta-btn primary">📞 Call Now</a>
+          ${shop.whatsapp ? `<a href="https://wa.me/91${shop.whatsapp}" target="_blank" class="cta-btn whatsapp">💬 WhatsApp</a>` : ""}
+          <button class="cta-btn outline" onclick="toggleLike('${shop.id}')">${liked ? "❤️ Liked" : "🤍 Like this Shop"}</button>
+          <button class="cta-btn outline" onclick="window.open('https://maps.google.com?q=${shop.lat},${shop.lng}')">🗺 Get Directions</button>
+        </div>
       </div>
-    </div>
 
-    <div class="action-btns">
-      <button class="action-btn secondary" onclick="toggleLike(event,'${id}')">
-        ${liked ? "❤️ Liked" : "🤍 Like"}
-      </button>
-      <button class="action-btn secondary" onclick="openReviewModal('${id}')">✍️ Review</button>
-      <button class="action-btn primary" onclick="window.open('https://maps.google.com?q=${shop.lat},${shop.lng}')">🗺️ रास्ता</button>
-    </div>
+      <div class="hours-card">
+        <div class="hours-title">Business Hours</div>
+        ${["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+          .map(
+            (d) =>
+              `<div class="hours-row"><span class="hours-day">${d}</span><span class="hours-time">${d === "Sun" ? "Closed" : shop.open + " – " + shop.close}</span></div>`,
+          )
+          .join("")}
+      </div>
+      <div id="detail-mini-map"></div>
+    </aside>`;
+      }
 
-    <div class="detail-section" style="margin-top:16px">
-      <h4>⭐ Reviews (${shop.reviewCount || 0})</h4>
-      <div id="reviewsList">${reviewsHTML}</div>
-    </div>
-  `;
-
-        document.getElementById("detailImgWrap").innerHTML = photoHTML;
-        document.getElementById("detailPanel").classList.add("open");
-      };
-
-      window.showPhoto = function (index, shopId) {
-        const shop = shops.find((s) => s.id === shopId);
-        if (!shop || !shop.photos) return;
-        document.getElementById("mainGalleryImg").src = shop.photos[index];
+      window.switchPhoto = function (url, el) {
+        document.getElementById("heroImg").src = url;
         document
-          .querySelectorAll(".thumb")
-          .forEach((t, i) => t.classList.toggle("active", i === index));
+          .querySelectorAll(".photo-thumb")
+          .forEach((t) => t.classList.remove("active"));
+        el.classList.add("active");
       };
 
-      function closeDetail() {
-        document.getElementById("detailPanel").classList.remove("open");
-        document
-          .querySelectorAll(".shop-card")
-          .forEach((c) => c.classList.remove("active"));
-        activeShopId = null;
-      }
-
-      // =====================================================================
-      // REVIEWS
-      // =====================================================================
-      async function loadReviews(shopId) {
-        if (isFirebaseReady) {
-          try {
-            const snap = await getDocs(
-              query(
-                collection(db, "reviews"),
-                where("shopId", "==", shopId),
-                orderBy("createdAt", "desc"),
-              ),
-            );
-            return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-          } catch (e) {
-            return DEMO_REVIEWS[shopId] || [];
-          }
-        }
-        return DEMO_REVIEWS[shopId] || [];
-      }
-
-      window.openReviewModal = function (shopId) {
-        if (!currentUser && isFirebaseReady) {
-          showToast("⚠️ Review लिखने के लिए पहले Login करें");
-          return;
-        }
-        document.getElementById("reviewShopId").value = shopId;
-        document.getElementById("reviewText").value = "";
-        setReviewRating(5);
-        document.getElementById("reviewModal").classList.add("open");
+      window.goBack = function () {
+        document.getElementById("page-detail").classList.remove("active");
+        setTimeout(() => {
+          document.getElementById("page-detail").style.display = "none";
+        }, 280);
+        document.getElementById("page-home").classList.add("active");
+        const s = shops.find((x) => x.id === currentDetailShopId);
+        if (s && s.lat && markers[s.id])
+          map.flyTo([s.lat, s.lng], 15, { duration: 0.7 });
       };
 
-      window.setReviewRating = function (n) {
-        document.querySelectorAll(".star-btn").forEach((s, i) => {
-          s.textContent = i < n ? "★" : "☆";
-          s.style.color = i < n ? "#f59e0b" : "#d1d5db";
-        });
-        document.getElementById("reviewRating").value = n;
-      };
-
-      window.submitReview = async function () {
-        const shopId = document.getElementById("reviewShopId").value;
-        const text = document.getElementById("reviewText").value.trim();
-        const rating =
-          parseInt(document.getElementById("reviewRating").value) || 5;
-
-        if (!text) {
-          showToast("❌ Review खाली नहीं हो सकता!");
-          return;
-        }
-
-        const review = {
-          shopId,
-          userName: currentUser?.displayName || "अज्ञात उपयोगकर्ता",
-          userPhoto: currentUser?.photoURL || "",
-          rating,
-          text,
-          createdAt: new Date(),
-        };
-
-        if (isFirebaseReady) {
-          try {
-            await addDoc(collection(db, "reviews"), {
-              ...review,
-              createdAt: serverTimestamp(),
-            });
-            const shopRef = doc(db, "shops", shopId);
-            const shop = shops.find((s) => s.id === shopId);
-            const newCount = (shop?.reviewCount || 0) + 1;
-            const newRating =
-              ((shop?.rating || 4) * (newCount - 1) + rating) / newCount;
-            await updateDoc(shopRef, {
-              reviewCount: increment(1),
-              rating: Math.round(newRating * 10) / 10,
-            });
-          } catch (e) {
-            addDemoReview(shopId, review);
-          }
-        } else {
-          addDemoReview(shopId, review);
-          const shop = shops.find((s) => s.id === shopId);
-          if (shop) {
-            shop.reviewCount = (shop.reviewCount || 0) + 1;
-            shop.rating =
-              Math.round((((shop.rating || 4) + rating) / 2) * 10) / 10;
-          }
+      /* ═══════════════════════════════════════════
+   SEARCH
+═══════════════════════════════════════════ */
+      window.handleSearch = function (q) {
+        if (!q.trim()) {
+          closeDropdown();
           renderAll();
-        }
-
-        closeReviewModal();
-        showToast("✅ Review जोड़ा गया! धन्यवाद 🙏");
-        setTimeout(() => openShopDetail(shopId), 500);
-      };
-
-      function addDemoReview(shopId, review) {
-        if (!DEMO_REVIEWS[shopId]) DEMO_REVIEWS[shopId] = [];
-        DEMO_REVIEWS[shopId].unshift({ ...review, id: "r" + Date.now() });
-      }
-
-      window.closeReviewModal = function () {
-        document.getElementById("reviewModal").classList.remove("open");
-      };
-
-      // =====================================================================
-      // LIKES
-      // =====================================================================
-      window.toggleLike = async function (e, id) {
-        e.stopPropagation();
-        const shop = shops.find((s) => s.id === id);
-        if (!shop) return;
-
-        if (isFirebaseReady && currentUser) {
-          const shopRef = doc(db, "shops", id);
-          const liked = (shop.likes || []).includes(currentUser.uid);
-          try {
-            await updateDoc(shopRef, {
-              likes:
-                liked ?
-                  arrayRemove(currentUser.uid)
-                : arrayUnion(currentUser.uid),
-            });
-          } catch (e) {}
-        } else {
-          // Demo mode
-          if (!shop.likes) shop.likes = [];
-          const uid = "demo-user";
-          if (shop.likes.includes(uid))
-            shop.likes = shop.likes.filter((u) => u !== uid);
-          else shop.likes.push(uid);
-          renderAll();
-          if (activeShopId === id) openShopDetail(id);
-        }
-      };
-
-      // =====================================================================
-      // ADD SHOP
-      // =====================================================================
-      window.openAddModal = function () {
-        uploadedPhotoURLs = [];
-        document.getElementById("photoPreviewGrid").innerHTML = "";
-        document.getElementById("addModal").classList.add("open");
-      };
-      window.closeAddModal = function () {
-        document.getElementById("addModal").classList.remove("open");
-      };
-
-      window.handlePhotoUpload = async function (input) {
-        const files = Array.from(input.files);
-        if (files.length === 0) return;
-        showToast("📷 Photos upload हो रही हैं...");
-
-        for (const file of files.slice(0, 5)) {
-          if (isFirebaseReady) {
-            try {
-              const storageRef = ref(
-                storage,
-                `shops/${Date.now()}_${file.name}`,
-              );
-              const snap = await uploadBytes(storageRef, file);
-              const url = await getDownloadURL(snap.ref);
-              uploadedPhotoURLs.push(url);
-            } catch (e) {
-              addLocalPreview(file);
-            }
-          } else {
-            // Local preview only in demo mode
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-              uploadedPhotoURLs.push(ev.target.result);
-              addPhotoPreviewDOM(ev.target.result);
-            };
-            reader.readAsDataURL(file);
-            continue;
-          }
-          addPhotoPreviewDOM(uploadedPhotoURLs[uploadedPhotoURLs.length - 1]);
-        }
-        if (isFirebaseReady)
-          showToast(`✅ ${Math.min(files.length, 5)} photos upload हुईं!`);
-      };
-
-      function addLocalPreview(file) {
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          uploadedPhotoURLs.push(ev.target.result);
-          addPhotoPreviewDOM(ev.target.result);
-        };
-        reader.readAsDataURL(file);
-      }
-
-      function addPhotoPreviewDOM(url) {
-        const grid = document.getElementById("photoPreviewGrid");
-        const div = document.createElement("div");
-        div.className = "photo-preview-item";
-        div.innerHTML = `<img src="${url}" alt="preview"><button onclick="removePhoto('${url}',this.parentElement)" class="remove-photo">✕</button>`;
-        grid.appendChild(div);
-      }
-
-      window.removePhoto = function (url, el) {
-        uploadedPhotoURLs = uploadedPhotoURLs.filter((u) => u !== url);
-        el.remove();
-      };
-
-      window.addShop = async function () {
-        const name = document.getElementById("newName").value.trim();
-        const phone = document.getElementById("newPhone").value.trim();
-        if (!name || !phone) {
-          showToast("❌ नाम और फोन नंबर जरूरी है!");
           return;
         }
-
-        const type = document.getElementById("newType").value;
-        const typeLabels = {
-          grocery: "किराना दुकान",
-          medical: "दवाखाना",
-          hardware: "हार्डवेयर",
-          clothes: "कपड़े की दुकान",
-          food: "खाने की दुकान",
-          dairy: "डेयरी",
-          electronics: "इलेक्ट्रॉनिक्स",
-          other: "अन्य",
-        };
-        const emojis = {
-          grocery: "🛒",
-          medical: "💊",
-          hardware: "🔧",
-          clothes: "👗",
-          food: "🍛",
-          dairy: "🥛",
-          electronics: "📱",
-          other: "🏪",
-        };
-        const products = document
-          .getElementById("newProducts")
-          .value.split(",")
-          .map((p) => p.trim())
-          .filter(Boolean);
-
-        // Get location
-        let lat = 26.848 + (Math.random() - 0.5) * 0.02;
-        let lng = 80.946 + (Math.random() - 0.5) * 0.02;
-        try {
-          const pos = await new Promise((res, rej) =>
-            navigator.geolocation.getCurrentPosition(res, rej, {
-              timeout: 3000,
-            }),
-          );
-          lat = pos.coords.latitude;
-          lng = pos.coords.longitude;
-        } catch (e) {}
-
-        const shopData = {
-          name,
-          type,
-          typeLabel: typeLabels[type] || "दुकान",
-          emoji: emojis[type] || "🏪",
-          owner: document.getElementById("newOwner").value || "अज्ञात",
-          phone,
-          whatsapp: document.getElementById("newWhatsapp").value || null,
-          village: document.getElementById("newVillage").value || "",
-          description: document.getElementById("newDesc").value || "",
-          products: products.length ? products : ["सामान उपलब्ध"],
-          rating: 4.0,
-          reviewCount: 0,
-          likes: [],
-          open: document.getElementById("newOpen").value || "9:00 AM",
-          close: document.getElementById("newClose").value || "8:00 PM",
-          isOpen: true,
-          photos: [...uploadedPhotoURLs],
-          lat,
-          lng,
-          addedBy: currentUser?.uid || "anonymous",
-          createdAt: new Date(),
-        };
-
-        if (isFirebaseReady) {
-          try {
-            const docRef = await addDoc(collection(db, "shops"), {
-              ...shopData,
-              createdAt: serverTimestamp(),
-            });
-            shopData.id = docRef.id;
-          } catch (e) {
-            shopData.id = "local_" + Date.now();
-            shops.unshift(shopData);
-            renderAll();
-          }
-        } else {
-          shopData.id = "local_" + Date.now();
-          shops.unshift(shopData);
-          renderAll();
-        }
-
-        closeAddModal();
-        showToast("✅ दुकान सफलतापूर्वक जोड़ी गई! 🎉");
-        setTimeout(() => openShopDetail(shopData.id), 400);
-      };
-
-      // =====================================================================
-      // AUTH
-      // =====================================================================
-      window.loginWithGoogle = async function () {
-        if (!isFirebaseReady) {
-          showToast("⚠️ Firebase configure करें");
+        renderAll(q);
+        const results = getFiltered(q).slice(0, 6);
+        const dd = document.getElementById("searchDropdown");
+        if (!results.length) {
+          dd.innerHTML = `<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:13px">No results found</div>`;
+          dd.classList.add("open");
           return;
         }
-        try {
-          await signInWithPopup(auth, provider);
-          showToast("✅ Login सफल!");
-        } catch (e) {
-          showToast("❌ Login failed");
-        }
+        dd.innerHTML = results
+          .map((s) => {
+            const meta = TYPE_META[s.type] || TYPE_META.other;
+            return `<div class="search-result-item" onclick="window.goToDetail('${s.id}')">
+      <div class="sri-icon" style="background:${meta.bg}">${meta.emoji}</div>
+      <div class="sri-info">
+        <div class="sri-name">${s.name}</div>
+        <div class="sri-meta">${meta.label} · ${s.village} · ⭐${(s.rating || 4).toFixed(1)}</div>
+      </div>
+      <span class="sri-arrow">→</span>
+    </div>`;
+          })
+          .join("");
+        dd.classList.add("open");
       };
 
-      window.logoutUser = async function () {
-        if (!isFirebaseReady) return;
-        await signOut(auth);
-        currentUser = null;
-        updateAuthUI();
-        showToast("👋 Logout हो गए");
+      window.openDropdown = function () {
+        const q = document.getElementById("searchInput").value;
+        if (q.trim()) handleSearch(q);
       };
-
-      function updateAuthUI() {
-        const btn = document.getElementById("authBtn");
-        if (currentUser) {
-          btn.innerHTML = `<img src="${currentUser.photoURL || ""}" onerror="this.style.display='none'" style="width:24px;height:24px;border-radius:50%;margin-right:6px"> ${currentUser.displayName?.split(" ")[0] || "User"} <span onclick="logoutUser()" style="margin-left:6px;opacity:0.6;font-size:10px">logout</span>`;
-          btn.style.background = "#1a7c4f";
-        } else {
-          btn.innerHTML = "🔑 Login";
-          btn.style.background = "#3b82f6";
-        }
+      function closeDropdown() {
+        document.getElementById("searchDropdown").classList.remove("open");
       }
-
-      // =====================================================================
-      // LOCATE
-      // =====================================================================
-      window.locateUser = function () {
-        showToast("📍 Location ढूंढी जा रही है...");
-        if (!navigator.geolocation) {
-          showToast("❌ Location support नहीं");
-          return;
-        }
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            const { latitude: lat, longitude: lng } = pos.coords;
-            map.flyTo([lat, lng], 15);
-            L.marker([lat, lng], {
-              icon: L.divIcon({
-                html: `<div style="background:#3b82f6;width:22px;height:22px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 5px rgba(59,130,246,0.25)"></div>`,
-                iconSize: [22, 22],
-                iconAnchor: [11, 11],
-                className: "",
-              }),
-            })
-              .addTo(map)
-              .bindPopup("📍 आप यहाँ हैं")
-              .openPopup();
-            showToast("✅ Location मिल गई!");
-          },
-          () => showToast("❌ Location access नहीं मिली"),
-        );
+      window.clearSearch = function () {
+        document.getElementById("searchInput").value = "";
+        closeDropdown();
+        renderAll();
       };
+      document.addEventListener("click", (e) => {
+        if (!e.target.closest(".search-bar-wrap")) closeDropdown();
+      });
 
-      // =====================================================================
-      // FILTER / SEARCH
-      // =====================================================================
+      /* ═══════════════════════════════════════════
+   FILTERS & NEARBY
+═══════════════════════════════════════════ */
       window.setFilter = function (type, btn) {
         currentFilter = type;
         document
-          .querySelectorAll(".filter-chip")
-          .forEach((c) => c.classList.remove("active"));
+          .querySelectorAll(".pill")
+          .forEach((p) => p.classList.remove("active"));
         btn.classList.add("active");
         renderAll();
       };
 
-      window.filterShops = function (q) {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(renderAll, 200);
+      window.toggleNearby = function () {
+        if (!userLat) {
+          locateUser();
+          return;
+        }
+        nearbyMode = !nearbyMode;
+        const btn = document.getElementById("nearbyToggle");
+        btn.style.background = nearbyMode ? "var(--brand)" : "";
+        btn.style.color = nearbyMode ? "#fff" : "";
+        renderAll();
+        if (nearbyMode) showToast("📍 Showing shops near you");
       };
 
-      // =====================================================================
-      // HELPERS
-      // =====================================================================
-      function formatDate(ts) {
-        if (!ts) return "";
-        const d = ts.toDate ? ts.toDate() : new Date(ts);
-        const diff = Math.floor((Date.now() - d) / 1000);
-        if (diff < 60) return "अभी";
-        if (diff < 3600) return `${Math.floor(diff / 60)} मिनट पहले`;
-        if (diff < 86400) return `${Math.floor(diff / 3600)} घंटे पहले`;
-        return `${Math.floor(diff / 86400)} दिन पहले`;
+      /* ═══════════════════════════════════════════
+   LOCATE
+═══════════════════════════════════════════ */
+      window.locateUser = function () {
+        if (!navigator.geolocation) {
+          document.getElementById("locOverlay").classList.add("open");
+          return;
+        }
+        showToast("📍 Finding your location...");
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            userLat = pos.coords.latitude;
+            userLng = pos.coords.longitude;
+            placeUserDot(userLat, userLng);
+            map.flyTo([userLat, userLng], 15);
+            nearbyMode = true;
+            const btn = document.getElementById("nearbyToggle");
+            btn.style.background = "var(--brand)";
+            btn.style.color = "#fff";
+            renderAll();
+            showToast("✅ Showing shops near you!");
+          },
+          (err) => {
+            if (err.code === 1)
+              document.getElementById("locOverlay").classList.add("open");
+            else showToast("❌ Could not get location. Try again.");
+          },
+          { timeout: 8000, enableHighAccuracy: true },
+        );
+      };
+
+      window.closeLoc = function () {
+        document.getElementById("locOverlay").classList.remove("open");
+      };
+      window.goManual = function () {
+        const v = document.getElementById("manualLoc").value.trim();
+        if (!v) return;
+        showToast("🔍 Searching for " + v + "...");
+        fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(v + ", India")}&format=json&limit=1`,
+        )
+          .then((r) => r.json())
+          .then((d) => {
+            if (d && d.length) {
+              userLat = parseFloat(d[0].lat);
+              userLng = parseFloat(d[0].lon);
+              placeUserDot(userLat, userLng);
+              map.flyTo([userLat, userLng], 14);
+              closeLoc();
+              nearbyMode = true;
+              renderAll();
+              showToast(`✅ Found: ${v}`);
+            } else showToast("❌ Place not found. Try another name.");
+          })
+          .catch(() => showToast("❌ Network error"));
+      };
+
+      /* ═══════════════════════════════════════════
+   LIKES  (Firebase)
+═══════════════════════════════════════════ */
+      window.toggleLike = async function (id) {
+        if (!currentUser) {
+          showToast("🔑 Please sign in to like shops");
+          doSignIn();
+          return;
+        }
+        const shop = shops.find((s) => s.id === id);
+        if (!shop) return;
+        const shopRef = doc(db, "shops", id);
+        const likes = shop.likes || [];
+        try {
+          if (likes.includes(currentUser.uid)) {
+            await updateDoc(shopRef, { likes: arrayRemove(currentUser.uid) });
+          } else {
+            await updateDoc(shopRef, { likes: arrayUnion(currentUser.uid) });
+          }
+        } catch (e) {
+          showToast("❌ Could not update like");
+        }
+      };
+
+      /* ═══════════════════════════════════════════
+   REVIEWS  (Firebase)
+═══════════════════════════════════════════ */
+      window.pickStar = function (n) {
+        reviewRating = n;
+        document.querySelectorAll(".star-pick").forEach((s, i) => {
+          s.style.color = i < n ? "#f59e0b" : "#d1d5db";
+        });
+      };
+
+      window.submitReview = async function (shopId) {
+        if (!currentUser) {
+          showToast("🔑 Please sign in to review");
+          return;
+        }
+        const text = document.getElementById("reviewInput").value.trim();
+        if (!text) {
+          showToast("❌ Please write something!");
+          return;
+        }
+
+        const reviewData = {
+          shopId,
+          userName: currentUser.displayName || "Anonymous",
+          userPhoto: currentUser.photoURL || "",
+          rating: reviewRating,
+          text,
+          createdAt: serverTimestamp(),
+        };
+
+        try {
+          await addDoc(collection(db, "reviews"), reviewData);
+          // Update shop rating & count
+          const shop = shops.find((s) => s.id === shopId);
+          const newCount = (shop?.reviewCount || 0) + 1;
+          const newRating =
+            Math.round(
+              (((shop?.rating || 4) * (newCount - 1) + reviewRating) /
+                newCount) *
+                10,
+            ) / 10;
+          await updateDoc(doc(db, "shops", shopId), {
+            reviewCount: increment(1),
+            rating: newRating,
+          });
+          // Refresh reviews cache
+          delete reviewsCache[shopId];
+          const fresh = await loadReviews(shopId);
+          renderReviewsList(fresh, shop);
+          document.getElementById("reviewInput").value = "";
+          showToast("✅ Review posted! Thank you 🙏");
+        } catch (e) {
+          showToast("❌ Could not post review. Try again.");
+        }
+      };
+
+      function renderReviewsList(reviews, shop) {
+        const meta = TYPE_META[shop?.type] || TYPE_META.other;
+        const rl = document.getElementById("reviewsList");
+        if (!rl) return;
+        rl.innerHTML =
+          reviews.length > 0 ?
+            reviews
+              .map((r) => {
+                const ts =
+                  r.createdAt?.toDate ?
+                    r.createdAt.toDate().getTime()
+                  : r.createdAt || Date.now();
+                return `<div class="review-item">
+          <div class="review-top">
+            <div class="reviewer-av" style="background:${meta.color}">${(r.userName || "?")[0].toUpperCase()}</div>
+            <div><div class="reviewer-name">${r.userName}</div><div class="reviewer-stars">${"★".repeat(r.rating || 5)}${"☆".repeat(5 - (r.rating || 5))}</div></div>
+            <div class="review-date">${timeAgo(ts)}</div>
+          </div>
+          <div class="review-body">${r.text}</div>
+        </div>`;
+              })
+              .join("")
+          : `<div class="empty-state" style="padding:24px"><div class="e-icon">💬</div><div class="e-text">No reviews yet. Be the first!</div></div>`;
       }
 
-      window.showToast = function (msg, duration = 3000) {
+      /* ═══════════════════════════════════════════
+   ADD SHOP  (Firebase + Storage)
+═══════════════════════════════════════════ */
+      window.openAddShop = function () {
+        uploadedPhotos = [];
+        uploadedPhotoFiles = [];
+        document.getElementById("previewGrid").innerHTML = "";
+        document.getElementById("addOverlay").classList.add("open");
+      };
+      window.closeAddShop = function () {
+        document.getElementById("addOverlay").classList.remove("open");
+      };
+
+      window.handlePhotos = function (input) {
+        const files = Array.from(input.files).slice(0, 5);
+        files.forEach((file) => {
+          uploadedPhotoFiles.push(file);
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            uploadedPhotos.push(ev.target.result);
+            const grid = document.getElementById("previewGrid");
+            const div = document.createElement("div");
+            div.className = "preview-item";
+            const idx = uploadedPhotos.length - 1;
+            div.innerHTML = `<img src="${ev.target.result}" alt=""><button class="preview-rm" onclick="removePhoto(${idx},this.parentElement)">✕</button>`;
+            grid.appendChild(div);
+          };
+          reader.readAsDataURL(file);
+        });
+      };
+
+      window.removePhoto = function (idx, el) {
+        uploadedPhotos.splice(idx, 1);
+        uploadedPhotoFiles.splice(idx, 1);
+        el.remove();
+      };
+
+      window.saveShop = async function () {
+        const name = document.getElementById("f-name").value.trim();
+        const phone = document.getElementById("f-phone").value.trim();
+        if (!name || !phone) {
+          showToast("❌ Name and phone are required!");
+          return;
+        }
+
+        const btn = document.querySelector(".btn-save");
+        btn.textContent = "Saving...";
+        btn.disabled = true;
+
+        try {
+          // Upload photos to Firebase Storage
+          const photoURLs = [];
+          for (const file of uploadedPhotoFiles) {
+            const storageRef = sRef(
+              storage,
+              `shops/${Date.now()}_${file.name}`,
+            );
+            const snap = await uploadBytes(storageRef, file);
+            const url = await getDownloadURL(snap.ref);
+            photoURLs.push(url);
+          }
+
+          // Get GPS location
+          let lat = (userLat || 20.5937) + (Math.random() - 0.5) * 0.01;
+          let lng = (userLng || 78.9629) + (Math.random() - 0.5) * 0.01;
+          try {
+            const pos = await new Promise((res, rej) =>
+              navigator.geolocation.getCurrentPosition(res, rej, {
+                timeout: 4000,
+              }),
+            );
+            lat = pos.coords.latitude + (Math.random() - 0.5) * 0.002;
+            lng = pos.coords.longitude + (Math.random() - 0.5) * 0.002;
+          } catch (e) {}
+
+          const type = document.getElementById("f-type").value;
+          const products = document
+            .getElementById("f-products")
+            .value.split(",")
+            .map((p) => p.trim())
+            .filter(Boolean);
+
+          const shopData = {
+            name,
+            type,
+            typeLabel: TYPE_META[type]?.label || "Shop",
+            emoji: TYPE_META[type]?.emoji || "🏪",
+            owner: document.getElementById("f-owner").value || "Owner",
+            phone,
+            whatsapp: document.getElementById("f-wa").value || null,
+            village: document.getElementById("f-village").value || "Village",
+            description: document.getElementById("f-desc").value || "",
+            products: products.length ? products : ["Items available"],
+            rating: 4.0,
+            reviewCount: 0,
+            likes: [],
+            open: document.getElementById("f-open").value || "9:00 AM",
+            close: document.getElementById("f-close").value || "8:00 PM",
+            isOpen: true,
+            photos: photoURLs,
+            lat,
+            lng,
+            addedBy: currentUser?.uid || "anonymous",
+            createdAt: serverTimestamp(),
+          };
+
+          const docRef = await addDoc(collection(db, "shops"), shopData);
+          closeAddShop();
+          showToast("🎉 Shop added to the map!");
+          setTimeout(() => window.goToDetail(docRef.id), 500);
+        } catch (e) {
+          showToast("❌ Failed to save shop. Check your connection.");
+          console.error(e);
+        } finally {
+          btn.textContent = "✓ Add to Map";
+          btn.disabled = false;
+        }
+      };
+
+      /* ═══════════════════════════════════════════
+   SHARE
+═══════════════════════════════════════════ */
+      window.shareShop = function () {
+        const shop = shops.find((s) => s.id === currentDetailShopId);
+        if (!shop) return;
+        const text = `Check out ${shop.name} in ${shop.village}! 📍 ${shop.phone}`;
+        if (navigator.share) navigator.share({ title: shop.name, text });
+        else {
+          navigator.clipboard?.writeText(text);
+          showToast("📋 Shop info copied!");
+        }
+      };
+
+      /* ═══════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════ */
+      function timeAgo(ts) {
+        const d = Math.floor((Date.now() - ts) / 1000);
+        if (d < 60) return "Just now";
+        if (d < 3600) return `${Math.floor(d / 60)}m ago`;
+        if (d < 86400) return `${Math.floor(d / 3600)}h ago`;
+        return `${Math.floor(d / 86400)}d ago`;
+      }
+
+      function showToast(msg, ms = 3200) {
         const t = document.getElementById("toast");
         t.textContent = msg;
         t.classList.add("show");
-        setTimeout(() => t.classList.remove("show"), duration);
-      };
-    </script>
-
-    <style>
-      :root {
-        --green: #1a7c4f;
-        --green-light: #24a066;
-        --green-pale: #e8f5ee;
-        --orange: #f97316;
-        --dark: #0f1c14;
-        --text: #1c2b22;
-        --muted: #6b8070;
-        --bg: #f5f9f6;
-        --white: #fff;
-        --radius: 16px;
-        --shadow: 0 4px 24px rgba(26, 124, 79, 0.12);
+        clearTimeout(t._t);
+        t._t = setTimeout(() => t.classList.remove("show"), ms);
       }
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-      body {
-        font-family: "Baloo 2", "Noto Sans Devanagari", sans-serif;
-        background: var(--bg);
-        color: var(--text);
-        min-height: 100vh;
-        overflow-x: hidden;
-      }
-
-      /* HEADER */
-      header {
-        background: var(--dark);
-        padding: 0 16px;
-        height: 60px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-        box-shadow: 0 2px 20px rgba(0, 0, 0, 0.4);
-      }
-      .logo {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-shrink: 0;
-      }
-      .logo-icon {
-        width: 38px;
-        height: 38px;
-        background: var(--green-light);
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 20px;
-      }
-      .logo-text .main {
-        font-size: 17px;
-        font-weight: 800;
-        color: #fff;
-        letter-spacing: -0.5px;
-      }
-      .logo-text .sub {
-        font-size: 10px;
-        color: var(--green-light);
-      }
-      .header-search {
-        flex: 1;
-        max-width: 400px;
-        margin: 0 12px;
-        display: flex;
-        align-items: center;
-        background: #1e2d25;
-        border-radius: 30px;
-        padding: 7px 16px;
-        border: 1.5px solid #2d4035;
-        transition: border-color 0.2s;
-      }
-      .header-search:focus-within {
-        border-color: var(--green-light);
-      }
-      .header-search input {
-        background: none;
-        border: none;
-        outline: none;
-        color: #fff;
-        font-size: 13px;
-        width: 100%;
-        font-family: inherit;
-      }
-      .header-search input::placeholder {
-        color: #6b8070;
-      }
-      .header-search span {
-        color: #6b8070;
-        margin-right: 8px;
-      }
-      .header-actions {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-      }
-      .hbtn {
-        border: none;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 700;
-        cursor: pointer;
-        padding: 7px 14px;
-        font-family: inherit;
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        transition: all 0.2s;
-        color: #fff;
-      }
-      .hbtn:hover {
-        transform: scale(1.04);
-        opacity: 0.9;
-      }
-      .btn-locate {
-        background: var(--green-light);
-      }
-      .btn-add {
-        background: var(--orange);
-      }
-      #authBtn {
-        background: #3b82f6;
-        min-width: 80px;
-        justify-content: center;
-      }
-
-      /* LAYOUT */
-      .app-body {
-        display: flex;
-        height: calc(100vh - 60px);
-      }
-
-      /* SIDEBAR */
-      .sidebar {
-        width: 350px;
-        min-width: 280px;
-        background: var(--white);
-        display: flex;
-        flex-direction: column;
-        box-shadow: 2px 0 20px rgba(0, 0, 0, 0.07);
-        z-index: 100;
-        overflow: hidden;
-      }
-      .sidebar-top {
-        padding: 14px;
-        border-bottom: 1px solid #eef2ef;
-      }
-      .filter-row {
-        display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
-        margin-bottom: 8px;
-      }
-      .filter-chip {
-        padding: 5px 12px;
-        border-radius: 20px;
-        border: 1.5px solid #d0e4d9;
-        background: #fff;
-        font-size: 12px;
-        cursor: pointer;
-        font-family: inherit;
-        color: var(--muted);
-        transition: all 0.15s;
-        font-weight: 600;
-      }
-      .filter-chip.active,
-      .filter-chip:hover {
-        background: var(--green);
-        border-color: var(--green);
-        color: #fff;
-      }
-      .results-count {
-        font-size: 12px;
-        color: var(--muted);
-      }
-      .shops-list {
-        flex: 1;
-        overflow-y: auto;
-        padding: 8px;
-      }
-      .shops-list::-webkit-scrollbar {
-        width: 3px;
-      }
-      .shops-list::-webkit-scrollbar-thumb {
-        background: #d0e4d9;
-        border-radius: 3px;
-      }
-
-      /* SHOP CARD */
-      .shop-card {
-        background: #fff;
-        border-radius: 14px;
-        margin-bottom: 10px;
-        cursor: pointer;
-        border: 1.5px solid transparent;
-        transition: all 0.2s;
-        overflow: hidden;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-      }
-      .shop-card:hover {
-        border-color: var(--green-light);
-        transform: translateY(-1px);
-        box-shadow: var(--shadow);
-      }
-      .shop-card.active {
-        border-color: var(--green);
-        box-shadow: 0 4px 20px rgba(26, 124, 79, 0.2);
-      }
-      .shop-card-img {
-        width: 100%;
-        height: 120px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        position: relative;
-        overflow: hidden;
-      }
-      .shop-badge {
-        position: absolute;
-        top: 8px;
-        left: 8px;
-        color: #fff;
-        font-size: 10px;
-        font-weight: 700;
-        padding: 3px 8px;
-        border-radius: 20px;
-      }
-      .shop-badge.open {
-        background: rgba(22, 163, 74, 0.9);
-      }
-      .shop-badge.closed {
-        background: rgba(220, 38, 38, 0.85);
-      }
-      .photo-count {
-        position: absolute;
-        bottom: 8px;
-        right: 8px;
-        background: rgba(0, 0, 0, 0.55);
-        color: #fff;
-        font-size: 10px;
-        padding: 2px 7px;
-        border-radius: 10px;
-        backdrop-filter: blur(4px);
-      }
-      .shop-card-body {
-        padding: 11px 12px 6px;
-      }
-      .shop-name {
-        font-size: 15px;
-        font-weight: 800;
-        color: var(--dark);
-        margin-bottom: 2px;
-      }
-      .shop-type {
-        font-size: 11px;
-        font-weight: 700;
-        margin-bottom: 5px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-      .shop-meta {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 11px;
-        color: var(--muted);
-        margin-bottom: 7px;
-        flex-wrap: wrap;
-      }
-      .shop-items {
-        display: flex;
-        gap: 4px;
-        flex-wrap: wrap;
-      }
-      .item-tag {
-        background: var(--green-pale);
-        color: var(--green);
-        font-size: 10px;
-        font-weight: 600;
-        padding: 2px 8px;
-        border-radius: 10px;
-      }
-      .shop-footer {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 9px 12px;
-        border-top: 1px solid #f0f4f1;
-      }
-      .shop-contact {
-        font-size: 12px;
-        color: var(--muted);
-      }
-      .like-btn {
-        background: none;
-        border: none;
-        cursor: pointer;
-        font-size: 17px;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        color: var(--muted);
-        transition: transform 0.2s;
-        font-family: inherit;
-      }
-      .like-btn.liked {
-        color: #ef4444;
-      }
-      .like-btn:hover {
-        transform: scale(1.2);
-      }
-      .like-count {
-        font-size: 11px;
-      }
-
-      /* MAP */
-      #map {
-        flex: 1;
-        height: 100%;
-        z-index: 1;
-      }
-
-      /* DETAIL PANEL */
-      .detail-panel {
-        position: absolute;
-        bottom: 0;
-        left: 350px;
-        width: 370px;
-        background: #fff;
-        border-radius: 20px 20px 0 0;
-        box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.15);
-        z-index: 500;
-        transform: translateY(100%);
-        transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-        max-height: 78vh;
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column;
-      }
-      .detail-panel.open {
-        transform: translateY(0);
-      }
-      .detail-handle {
-        width: 40px;
-        height: 4px;
-        background: #d0e4d9;
-        border-radius: 4px;
-        margin: 12px auto 4px;
-        flex-shrink: 0;
-      }
-      .detail-body {
-        padding: 14px 16px 20px;
-      }
-      .detail-name {
-        font-size: 22px;
-        font-weight: 800;
-        color: var(--dark);
-        margin-bottom: 3px;
-      }
-      .detail-type {
-        font-size: 12px;
-        font-weight: 700;
-        text-transform: uppercase;
-        margin-bottom: 10px;
-      }
-      .detail-stats {
-        display: flex;
-        gap: 12px;
-        margin-bottom: 14px;
-        flex-wrap: wrap;
-      }
-      .stat {
-        text-align: center;
-        background: var(--green-pale);
-        border-radius: 12px;
-        padding: 8px 14px;
-      }
-      .stat .val {
-        font-size: 15px;
-        font-weight: 800;
-        color: var(--dark);
-      }
-      .stat .lbl {
-        font-size: 10px;
-        color: var(--muted);
-      }
-      .detail-section {
-        margin-bottom: 14px;
-      }
-      .detail-section h4 {
-        font-size: 13px;
-        font-weight: 800;
-        color: var(--dark);
-        margin-bottom: 8px;
-      }
-      .products-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 6px;
-      }
-      .product-item {
-        background: var(--green-pale);
-        border-radius: 10px;
-        padding: 8px 5px;
-        text-align: center;
-        font-size: 11px;
-        color: var(--green);
-        font-weight: 600;
-      }
-      .contact-list {
-        display: flex;
-        flex-direction: column;
-        gap: 7px;
-      }
-      .contact-item {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        background: #f8faf8;
-        border-radius: 10px;
-        padding: 9px 12px;
-        font-size: 13px;
-      }
-      .contact-item .icon {
-        font-size: 18px;
-      }
-      .contact-item a {
-        color: var(--green);
-        text-decoration: none;
-        font-weight: 600;
-      }
-      .action-btns {
-        display: flex;
-        gap: 8px;
-        margin-top: 14px;
-      }
-      .action-btn {
-        flex: 1;
-        padding: 11px 8px;
-        border-radius: 12px;
-        border: none;
-        font-size: 12px;
-        font-weight: 700;
-        cursor: pointer;
-        font-family: inherit;
-        transition: all 0.2s;
-      }
-      .action-btn.primary {
-        background: var(--green);
-        color: #fff;
-      }
-      .action-btn.primary:hover {
-        background: var(--dark);
-      }
-      .action-btn.secondary {
-        background: var(--green-pale);
-        color: var(--green);
-      }
-      .action-btn.secondary:hover {
-        background: #d0e4d9;
-      }
-      .close-detail {
-        position: sticky;
-        top: 0;
-        float: right;
-        background: #f0f4f1;
-        border: none;
-        border-radius: 50%;
-        width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        font-size: 15px;
-        z-index: 10;
-        margin: 12px 14px 0 0;
-      }
-
-      /* PHOTO GALLERY */
-      .photo-gallery {
-        position: relative;
-      }
-      .photo-thumbs {
-        display: flex;
-        gap: 6px;
-        padding: 8px;
-        overflow-x: auto;
-        background: #f8faf8;
-      }
-      .photo-thumbs::-webkit-scrollbar {
-        height: 3px;
-      }
-      .thumb {
-        width: 56px;
-        height: 40px;
-        object-fit: cover;
-        border-radius: 6px;
-        cursor: pointer;
-        border: 2px solid transparent;
-        transition: border-color 0.15s;
-        flex-shrink: 0;
-      }
-      .thumb.active {
-        border-color: var(--green);
-      }
-
-      /* REVIEWS */
-      .review-card {
-        background: #f8faf8;
-        border-radius: 12px;
-        padding: 12px;
-        margin-bottom: 10px;
-      }
-      .review-header {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin-bottom: 8px;
-      }
-      .review-avatar {
-        width: 34px;
-        height: 34px;
-        border-radius: 50%;
-        background: var(--green);
-        color: #fff;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 14px;
-        font-weight: 700;
-        flex-shrink: 0;
-      }
-      .review-name {
-        font-size: 13px;
-        font-weight: 700;
-        color: var(--dark);
-      }
-      .review-stars {
-        color: #f59e0b;
-        font-size: 13px;
-        letter-spacing: -2px;
-      }
-      .review-date {
-        font-size: 11px;
-        color: var(--muted);
-        margin-left: auto;
-      }
-      .review-text {
-        font-size: 13px;
-        color: var(--text);
-        line-height: 1.6;
-      }
-
-      /* MODALS */
-      .modal-overlay {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.55);
-        z-index: 2000;
-        backdrop-filter: blur(4px);
-        align-items: center;
-        justify-content: center;
-        padding: 16px;
-      }
-      .modal-overlay.open {
-        display: flex;
-      }
-      .modal {
-        background: #fff;
-        border-radius: 24px;
-        padding: 22px;
-        width: 100%;
-        max-width: 480px;
-        max-height: 88vh;
-        overflow-y: auto;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-        animation: slideUp 0.3s ease;
-      }
-      @keyframes slideUp {
-        from {
-          transform: translateY(30px);
-          opacity: 0;
-        }
-        to {
-          transform: translateY(0);
-          opacity: 1;
-        }
-      }
-      .modal h2 {
-        font-size: 20px;
-        font-weight: 800;
-        color: var(--dark);
-        margin-bottom: 2px;
-      }
-      .modal-sub {
-        font-size: 13px;
-        color: var(--muted);
-        margin-bottom: 18px;
-      }
-      .form-group {
-        margin-bottom: 13px;
-      }
-      .form-group label {
-        font-size: 12px;
-        font-weight: 700;
-        color: var(--dark);
-        display: block;
-        margin-bottom: 4px;
-      }
-      .form-group input,
-      .form-group select,
-      .form-group textarea {
-        width: 100%;
-        padding: 10px 13px;
-        border: 1.5px solid #d0e4d9;
-        border-radius: 10px;
-        font-family: inherit;
-        font-size: 13px;
-        color: var(--text);
-        background: #f8faf8;
-        outline: none;
-        transition: border-color 0.2s;
-      }
-      .form-group input:focus,
-      .form-group select:focus,
-      .form-group textarea:focus {
-        border-color: var(--green-light);
-        background: #fff;
-      }
-      .form-group textarea {
-        resize: vertical;
-        min-height: 65px;
-      }
-      .form-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-      }
-      .modal-footer {
-        display: flex;
-        gap: 10px;
-        margin-top: 8px;
-      }
-      .modal-close {
-        flex: 1;
-        padding: 12px;
-        background: #f0f4f1;
-        border: none;
-        border-radius: 12px;
-        font-size: 14px;
-        font-weight: 700;
-        cursor: pointer;
-        font-family: inherit;
-        color: var(--muted);
-      }
-      .modal-submit {
-        flex: 2;
-        padding: 12px;
-        background: var(--green);
-        border: none;
-        border-radius: 12px;
-        font-size: 14px;
-        font-weight: 700;
-        cursor: pointer;
-        font-family: inherit;
-        color: #fff;
-        transition: background 0.2s;
-      }
-      .modal-submit:hover {
-        background: var(--dark);
-      }
-
-      /* PHOTO UPLOAD */
-      .upload-zone {
-        border: 2px dashed #d0e4d9;
-        border-radius: 12px;
-        padding: 20px;
-        text-align: center;
-        cursor: pointer;
-        transition: all 0.2s;
-        background: #f8faf8;
-        position: relative;
-      }
-      .upload-zone:hover {
-        border-color: var(--green-light);
-        background: var(--green-pale);
-      }
-      .upload-zone input {
-        position: absolute;
-        inset: 0;
-        opacity: 0;
-        cursor: pointer;
-        width: 100%;
-        height: 100%;
-      }
-      .upload-zone p {
-        font-size: 13px;
-        color: var(--muted);
-        margin-top: 6px;
-      }
-      .photo-preview-grid {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        margin-top: 10px;
-      }
-      .photo-preview-item {
-        position: relative;
-        width: 70px;
-        height: 70px;
-      }
-      .photo-preview-item img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        border-radius: 8px;
-      }
-      .remove-photo {
-        position: absolute;
-        top: -5px;
-        right: -5px;
-        background: #ef4444;
-        color: #fff;
-        border: none;
-        border-radius: 50%;
-        width: 18px;
-        height: 18px;
-        font-size: 10px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      /* STAR RATING */
-      .star-row {
-        display: flex;
-        gap: 6px;
-        margin-top: 4px;
-      }
-      .star-btn {
-        background: none;
-        border: none;
-        font-size: 28px;
-        cursor: pointer;
-        color: #f59e0b;
-        transition: transform 0.1s;
-        font-family: inherit;
-      }
-      .star-btn:hover {
-        transform: scale(1.2);
-      }
-
-      /* TOAST */
-      .locate-toast {
-        position: fixed;
-        bottom: 24px;
-        left: 50%;
-        transform: translateX(-50%) translateY(20px);
-        background: var(--dark);
-        color: #fff;
-        padding: 10px 22px;
-        border-radius: 30px;
-        font-size: 13px;
-        opacity: 0;
-        transition: all 0.3s;
-        z-index: 3000;
-        pointer-events: none;
-        white-space: nowrap;
-      }
-      .locate-toast.show {
-        opacity: 1;
-        transform: translateX(-50%) translateY(0);
-      }
-
-      /* FIREBASE NOTICE */
-      .firebase-notice {
-        background: linear-gradient(135deg, #1e2d25, #0f1c14);
-        color: #fff;
-        padding: 10px 16px;
-        font-size: 12px;
-        text-align: center;
-        border-bottom: 1px solid #2d4035;
-      }
-      .firebase-notice a {
-        color: var(--green-light);
-        font-weight: 700;
-        text-decoration: none;
-      }
-
-      /* POPUP */
-      .leaflet-container {
-        font-family: "Baloo 2", sans-serif;
-      }
-      .custom-popup .leaflet-popup-content-wrapper {
-        border-radius: 16px;
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
-        border: 2px solid var(--green-light);
-        padding: 0;
-      }
-      .custom-popup .leaflet-popup-content {
-        margin: 0;
-      }
-      .popup-inner {
-        padding: 14px;
-        min-width: 190px;
-      }
-      .popup-inner h3 {
-        font-size: 14px;
-        font-weight: 800;
-        color: var(--dark);
-        margin: 4px 0 3px;
-      }
-      .popup-inner p {
-        font-size: 11px;
-        color: #6b8070;
-        margin-bottom: 2px;
-      }
-      .popup-btn {
-        margin-top: 10px;
-        background: var(--green);
-        color: #fff;
-        border: none;
-        border-radius: 8px;
-        padding: 7px 14px;
-        font-size: 12px;
-        cursor: pointer;
-        width: 100%;
-        font-family: inherit;
-        font-weight: 700;
-      }
-
-      /* RESPONSIVE */
-      @media (max-width: 768px) {
-        .sidebar {
-          position: fixed;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          width: 100%;
-          height: 48vh;
-          border-radius: 20px 20px 0 0;
-          z-index: 200;
-          box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.1);
-        }
-        .app-body {
-          flex-direction: column;
-        }
-        #map {
-          height: 52vh;
-        }
-        .header-search {
-          display: none;
-        }
-        .detail-panel {
-          left: 0;
-          width: 100%;
-          max-height: 85vh;
-        }
-        .logo-text .sub {
-          display: none;
-        }
-        .header-actions .hbtn span {
-          display: none;
-        }
-      }
-      @media (max-width: 480px) {
-        .detail-stats {
-          gap: 8px;
-        }
-        .stat {
-          padding: 6px 10px;
-        }
-      }
-
-      /* MOBILE SEARCH */
-      .mobile-search {
-        display: none;
-        padding: 10px 12px;
-        border-bottom: 1px solid #eef2ef;
-      }
-      .mobile-search-bar {
-        display: flex;
-        align-items: center;
-        background: #f0f4f1;
-        border-radius: 30px;
-        padding: 7px 14px;
-        gap: 8px;
-      }
-      .mobile-search-bar input {
-        background: none;
-        border: none;
-        outline: none;
-        font-size: 13px;
-        font-family: inherit;
-        width: 100%;
-        color: var(--text);
-      }
-      @media (max-width: 768px) {
-        .mobile-search {
-          display: block;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <!-- FIREBASE NOTICE (shown when not configured) -->
-    <div class="firebase-notice" id="firebaseNotice">
-      🔥 <strong>Demo Mode</strong> — Real database ke liye apna
-      <a href="https://console.firebase.google.com" target="_blank"
-        >Firebase config</a
-      >
-      add karein (instructions HTML mein hain) | अभी Demo data dikha raha hai
-    </div>
-
-    <!-- HEADER -->
-    <header>
-      <div class="logo">
-        <div class="logo-icon">🏘️</div>
-        <div class="logo-text">
-          <div class="main">गाँव बाज़ार</div>
-          <div class="sub">Village Shop Finder</div>
-        </div>
-      </div>
-
-      <div class="header-search">
-        <span>🔍</span>
-        <input
-          type="text"
-          id="globalSearch"
-          placeholder="दुकान, सामान या गाँव खोजें..."
-          oninput="filterShops(this.value)"
-        />
-      </div>
-
-      <div class="header-actions">
-        <button class="hbtn btn-locate" onclick="locateUser()">
-          📍 <span>Location</span>
-        </button>
-        <button class="hbtn btn-add" onclick="openAddModal()">
-          ➕ <span>Shop</span>
-        </button>
-        <button class="hbtn" id="authBtn" onclick="loginWithGoogle()">
-          🔑 Login
-        </button>
-      </div>
-    </header>
-
-    <!-- MAIN -->
-    <div class="app-body">
-      <div class="sidebar">
-        <div class="mobile-search">
-          <div class="mobile-search-bar">
-            <span>🔍</span>
-            <input
-              type="text"
-              placeholder="खोजें..."
-              oninput="filterShops(this.value)"
-            />
-          </div>
-        </div>
-        <div class="sidebar-top">
-          <div class="filter-row">
-            <button class="filter-chip active" onclick="setFilter('all', this)">
-              🏪 सभी
-            </button>
-            <button class="filter-chip" onclick="setFilter('grocery', this)">
-              🛒 किराना
-            </button>
-            <button class="filter-chip" onclick="setFilter('medical', this)">
-              💊 दवाई
-            </button>
-            <button class="filter-chip" onclick="setFilter('hardware', this)">
-              🔧 हार्डवेयर
-            </button>
-            <button class="filter-chip" onclick="setFilter('clothes', this)">
-              👗 कपड़े
-            </button>
-            <button class="filter-chip" onclick="setFilter('food', this)">
-              🍛 खाना
-            </button>
-            <button class="filter-chip" onclick="setFilter('dairy', this)">
-              🥛 डेयरी
-            </button>
-            <button
-              class="filter-chip"
-              onclick="setFilter('electronics', this)"
-            >
-              📱 इलेक्ट्रॉनिक्स
-            </button>
-          </div>
-          <div class="results-count" id="resultsCount">लोड हो रहा है...</div>
-        </div>
-        <div class="shops-list" id="shopsList"></div>
-      </div>
-
-      <div id="map"></div>
-    </div>
-
-    <!-- DETAIL PANEL -->
-    <div class="detail-panel" id="detailPanel">
-      <button
-        class="close-detail"
-        onclick="
-          (function () {
-            document.getElementById('detailPanel').classList.remove('open');
-            document
-              .querySelectorAll('.shop-card')
-              .forEach((c) => c.classList.remove('active'));
-          })()
-        "
-      >
-        ✕
-      </button>
-      <div class="detail-handle"></div>
-      <div id="detailImgWrap"></div>
-      <div class="detail-body" id="detailBody"></div>
-    </div>
-
-    <!-- ADD SHOP MODAL -->
-    <div class="modal-overlay" id="addModal">
-      <div class="modal">
-        <h2>🏪 नई दुकान जोड़ें</h2>
-        <p class="modal-sub">Map पे दिखेगी — बिल्कुल मुफ़्त!</p>
-
-        <div class="form-group">
-          <label>📷 दुकान की Photos (max 5)</label>
-          <div class="upload-zone">
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              onchange="handlePhotoUpload(this)"
-            />
-            <div style="font-size: 32px">📸</div>
-            <p>Click करें या Photos खींचकर डालें</p>
-            <p style="font-size: 11px; margin-top: 3px">
-              JPG, PNG · Max 5 photos
-            </p>
-          </div>
-          <div class="photo-preview-grid" id="photoPreviewGrid"></div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label>दुकान का नाम *</label>
-            <input
-              type="text"
-              id="newName"
-              placeholder="जैसे: राम किराना स्टोर"
-            />
-          </div>
-          <div class="form-group">
-            <label>प्रकार *</label>
-            <select id="newType">
-              <option value="grocery">🛒 किराना</option>
-              <option value="medical">💊 दवाई</option>
-              <option value="hardware">🔧 हार्डवेयर</option>
-              <option value="clothes">👗 कपड़े</option>
-              <option value="food">🍛 खाना</option>
-              <option value="dairy">🥛 डेयरी</option>
-              <option value="electronics">📱 इलेक्ट्रॉनिक्स</option>
-              <option value="other">🏪 अन्य</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label>मालिक का नाम</label>
-            <input type="text" id="newOwner" placeholder="रामलाल जी" />
-          </div>
-          <div class="form-group">
-            <label>गाँव / मोहल्ला</label>
-            <input type="text" id="newVillage" placeholder="रामपुर, UP" />
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label>📞 मोबाइल *</label>
-            <input type="tel" id="newPhone" placeholder="9876543210" />
-          </div>
-          <div class="form-group">
-            <label>💬 WhatsApp</label>
-            <input type="tel" id="newWhatsapp" placeholder="9876543210" />
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>🛍️ क्या मिलता है (कॉमा से)</label>
-          <textarea
-            id="newProducts"
-            placeholder="आटा, दाल, चावल, तेल, साबुन"
-          ></textarea>
-        </div>
-
-        <div class="form-group">
-          <label>📝 दुकान के बारे में</label>
-          <textarea
-            id="newDesc"
-            placeholder="अपनी दुकान के बारे में कुछ लिखें..."
-          ></textarea>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label>🕐 खुलने का समय</label>
-            <input type="text" id="newOpen" placeholder="7:00 AM" />
-          </div>
-          <div class="form-group">
-            <label>🕘 बंद होने का समय</label>
-            <input type="text" id="newClose" placeholder="9:00 PM" />
-          </div>
-        </div>
-
-        <div class="modal-footer">
-          <button class="modal-close" onclick="closeAddModal()">
-            रद्द करें
-          </button>
-          <button class="modal-submit" onclick="addShop()">
-            ✅ दुकान जोड़ें
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- REVIEW MODAL -->
-    <div class="modal-overlay" id="reviewModal">
-      <div class="modal" style="max-width: 400px">
-        <h2>✍️ Review लिखें</h2>
-        <p class="modal-sub">अपना अनुभव शेयर करें</p>
-        <input type="hidden" id="reviewShopId" />
-        <input type="hidden" id="reviewRating" value="5" />
-
-        <div class="form-group">
-          <label>Rating दें</label>
-          <div class="star-row">
-            <button class="star-btn" onclick="setReviewRating(1)">★</button>
-            <button class="star-btn" onclick="setReviewRating(2)">★</button>
-            <button class="star-btn" onclick="setReviewRating(3)">★</button>
-            <button class="star-btn" onclick="setReviewRating(4)">★</button>
-            <button class="star-btn" onclick="setReviewRating(5)">★</button>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>आपका अनुभव *</label>
-          <textarea
-            id="reviewText"
-            placeholder="दुकान कैसी लगी? सामान, व्यवहार, दाम के बारे में बताएं..."
-            style="min-height: 90px"
-          ></textarea>
-        </div>
-
-        <div class="modal-footer">
-          <button class="modal-close" onclick="closeReviewModal()">
-            रद्द करें
-          </button>
-          <button class="modal-submit" onclick="submitReview()">
-            🌟 Review भेजें
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- TOAST -->
-    <div class="locate-toast" id="toast"></div>
-
-    <script>
-      // Hide firebase notice if configured
-      setTimeout(() => {
-        const notice = document.getElementById("firebaseNotice");
-        if (window._firebaseReady) notice.style.display = "none";
-      }, 1000);
     </script>
   </body>
 </html>
